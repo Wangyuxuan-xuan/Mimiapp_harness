@@ -8,8 +8,9 @@ export function createStudioClient({url='',token='',fetchImpl=globalThis.fetch}=
  }
  const json=async(route,options)=>{const res=await response(route,options);try{return await res.json();}catch{throw new Error('工作台响应格式无效。');}};
  const post=(route,value)=>json(route,{method:'POST',body:JSON.stringify(value)});
- async function* run(id,value,{signal}={}){
+ async function* run(id,value,{signal,onStarted}={}){
   const res=await response(`/projects/${encodeURIComponent(id)}/run`,{method:'POST',body:JSON.stringify(value),signal});
+  onStarted?.();
   const reader=res.body.getReader(),decoder=new TextDecoder();let pending='';
   const event=line=>{try{return JSON.parse(line);}catch{throw new Error('制作进度响应格式无效，请查看任务状态。');}};
   try{while(true){const {done,value:chunk}=await reader.read();pending+=decoder.decode(chunk||new Uint8Array(),{stream:!done});let split;while((split=pending.indexOf('\n'))>=0){const line=pending.slice(0,split);pending=pending.slice(split+1);if(line.trim())yield event(line);}if(done)break;}if(pending.trim())yield event(pending);}finally{await reader.cancel().catch(()=>{});reader.releaseLock();}

@@ -49,7 +49,7 @@
 
 B 已通过包内CLI实际导出第2版到全新 `test-results/studio-002-b-qr-rev2.zip`；默认沙箱调用报安全通用错误，正常审批同一命令成功。B 独立核15源码及19非空weapp字节一致，报告 `studio-002-b-qr-rev2-artifact.json`。源摘要 `5fe83b0fcafe1e349f331e31c26001063aeaf4046718cb88e44a1ead7dc4a989`，ZIP SHA256 `aa7dacf643de5425cbb4a3eb9b482ae89240f6da6179fdb90deb6f2377de7b02`。同次重新核第1版源摘要及其原ZIP仍完全一致，未改旧版本。
 
-最后实际执行状态：QA聊天 `active/waitingOnApproval`，最近完成的工具仅为识别遮挡休息提醒的窗口清单；B与A都未取得具体待批动作或拒绝理由，不能代批准或泛问用户。B已通知QA先继续未受影响的产物/文档工作，未关闭未知第三方提醒。等待恢复后由QA接续上述原生步骤，明确交回桌面再由B亲验；该等待不等于QA仍在持续操作桌面。
+最后实际执行状态：QA聊天 `active/waitingOnApproval`。B只读验收窗口状态时，实际截图返回Codex前景中的QA聊天，明确显示Computer Use“允许ChatGPT使用BreakTimer？”应用访问请求。QA此前读取该提醒窗口的动作300088ms失败，但访问申请仍待用户处理。此请求与项目无关，B没有代点批准、访问提醒内容或关闭第三方应用；已告知A/QA，需拒绝无关应用访问以解除等待，恢复后只观察并操作Sprout。等待恢复后由QA接续上述原生步骤，明确交回桌面再由B亲验；该等待不等于QA仍在持续操作桌面。
 
 ## 已登记的后续改进
 

@@ -12,9 +12,20 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 import {chromium} from 'playwright-core';
 
 const repo=fileURLToPath(new URL('../../',import.meta.url));
-const packageDir=path.join(repo,'release-harness-20261009-studio2-r1');
-const expectedProduct='ccae82b131abe30a7b9cc682c1b18712830d8dce';
+const options=process.argv.slice(2);
+if(options.length===1&&options[0]==='--help'){
+ console.log('node tests/qa/native-config-upgrade.check.mjs [--package-dir ABSOLUTE_DIRECTORY --expected-product FULL_SHA]\nNo arguments explicitly select historical studio2-r1 / ccae82b. Every new package must supply both options. Manifest mismatch fails before any temporary profile or GUI starts.');process.exit(0);
+}
+let packageDir=path.join(repo,'release-harness-20261009-studio2-r1');
+let expectedProduct='ccae82b131abe30a7b9cc682c1b18712830d8dce';
+if(options.length){
+ assert.equal(options.length,4,'Supply both --package-dir and --expected-product');
+ const parsed={};for(let i=0;i<options.length;i+=2){assert(['--package-dir','--expected-product'].includes(options[i])&&!Object.hasOwn(parsed,options[i]),'Unknown or repeated native option');parsed[options[i]]=options[i+1];}
+ assert(path.isAbsolute(parsed['--package-dir']),'Package directory must be absolute');assert(/^[a-f0-9]{40}$/i.test(parsed['--expected-product']),'Expected product must be a full Git SHA');
+ packageDir=path.resolve(parsed['--package-dir']);expectedProduct=parsed['--expected-product'].toLowerCase();
+}
 const manifest=JSON.parse(await fs.readFile(path.join(packageDir,'build-manifest.json'),'utf8'));
+assert.equal(manifest.baseCommit,expectedProduct,'Package manifest does not match expected product');
 const sourceRuntime=path.join(packageDir,'win-unpacked');
 const root=path.resolve(await fs.mkdtemp(path.join(os.tmpdir(),'sprout-qa-native-upgrade-')));
 const artifacts=path.join(repo,'test-results','native-config-upgrade-'+Date.now());await fs.mkdir(artifacts,{recursive:true});

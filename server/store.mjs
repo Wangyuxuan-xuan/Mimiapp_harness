@@ -69,7 +69,7 @@ export class Store {
     const id=randomUUID(), dir=this.dir(id); await fs.mkdir(dir,{recursive:true});
     await fs.cp(path.join(APP_ROOT,'templates/mini'),path.join(dir,'current'),{recursive:true});
     if(!sample)await fs.cp(path.join(APP_ROOT,'templates/blank/src'),path.join(dir,'current/src'),{recursive:true});
-    const p={id,title:String(title).trim().slice(0,40)||'我的新小程序',sample,createdAt:Date.now(),updatedAt:Date.now(),revision:0,ready:false,versions:[],messages:[{role:'assistant',text:sample?'这是「日常」习惯打卡示例，已内置新增习惯、每日打卡和七天统计。你可以直接在右侧试用。连接模型后，说说你想怎么改。':'新项目已准备好。告诉我你想做什么，我会从你的想法开始制作小程序。',time:Date.now()}]};
+    const p={id,title:String(title).trim().slice(0,40)||'我的新小程序',sample,createdAt:Date.now(),updatedAt:Date.now(),revision:0,ready:false,versions:[],messages:[{role:'assistant',text:sample?'这是「日常」习惯打卡示例，内置新增习惯、每日打卡和七天统计。预览正在后台准备；连接模型后，现在就可以告诉我想怎么改。':'新项目已准备好。告诉我你想做什么，我会从你的想法开始制作小程序。',time:Date.now()}]};
     await this.save(p); return p;
   }
   async draft(id,files) {
@@ -92,7 +92,7 @@ export class Store {
       await fs.cp(draft,target,{recursive:true});signal?.throwIfAborted();
       // Canonical source is the published immutable revision; preparation never overwrites current.
       signal?.throwIfAborted();
-      const next={...project,revision,ready:true,updatedAt:Date.now(),versions:[...project.versions,{id:randomUUID(),revision,label:label.slice(0,80),time:Date.now(),files,memory:structuredClone(project.memory),verification:structuredClone(project.verification||{state:'pending'})}]};
+      const next={...project,revision,ready:true,initialization:{state:'ready',phase:'预览已就绪'},updatedAt:Date.now(),versions:[...project.versions,{id:randomUUID(),revision,label:label.slice(0,80),time:Date.now(),files,memory:structuredClone(project.memory),verification:structuredClone(project.verification||{state:'pending'})}]};
       // This synchronous boundary rejects later stop requests before any publication await.
       beforePublish?.();await this.save(next);published=true;Object.assign(project,next);return project;
     }finally{if(!published)await fs.rm(target,{recursive:true,force:true}).catch(()=>{});}

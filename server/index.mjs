@@ -71,20 +71,54 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
   };
   const mutation=handler=>async(req,res,next)=>{const id=req.params.id;if(operations.has(id))return next(new Error('项目操作正在进行，请稍后再试。'));if(closing)return next(new Error('应用正在关闭。'));operations.add(id);let finish;const pending=new Promise(r=>{finish=r;});activeMutations.add(pending);try{await handler(req,res,next);}catch(e){next(e);}finally{operations.delete(id);activeMutations.delete(pending);finish();}};
   function assertIdle(id){if(jobs.has(id))throw new Error('项目正在制作，请先等待完成或停止。');}
-  async function initializeProject(title,sample=false){const p=await store.create(title,sample);const draft=await store.draft(p.id);await build(draft,{onLog:text=>console.log(text)});await store.commit(p,draft,sample?'初始示例 · 日常习惯':'创建项目');return store.public(p);}
+  const preparations=new Map();
+  function prepareProject(p){
+    if(closing)return Promise.resolve();
+    const controller=new AbortController(),baseRevision=p.revision;
+    const entry={controller,finished:null};preparations.set(p.id,entry);
+    entry.finished=(async()=>{
+      let draft;
+      try{
+        p.initialization={state:'preparing',phase:'正在后台构建真实预览'};await store.save(p);controller.signal.throwIfAborted();
+        draft=await store.draft(p.id);controller.signal.throwIfAborted();
+        await build(draft,{signal:controller.signal});controller.signal.throwIfAborted();
+        // Re-read metadata: memory edits during compilation must survive publication.
+        while(operations.has(p.id)){await new Promise(r=>setTimeout(r,10));controller.signal.throwIfAborted();}
+        operations.add(p.id);
+        try{const latest=await store.get(p.id);controller.signal.throwIfAborted();
+          if(latest.revision!==baseRevision)throw new Error('项目版本已变化，初始预览不再提交。');
+          await store.commit(latest,draft,p.sample?'初始示例 · 日常习惯':'创建项目',{signal:controller.signal});
+        }finally{operations.delete(p.id);}
+      }catch(e){
+        // A run cancels while holding this project's mutation lock. Other failure
+        // paths must wait for metadata writes before merging preparation status.
+        while(operations.has(p.id)&&!entry.cancelledByRun)await new Promise(r=>setTimeout(r,10));
+        const ownsLock=!operations.has(p.id);if(ownsLock)operations.add(p.id);
+        try{const latest=await store.get(p.id);
+          if(!latest.ready){latest.initialization={state:controller.signal.aborted?'interrupted':'failed',phase:controller.signal.aborted?'预览准备已中断，可直接开始制作':'预览准备失败，可直接开始制作',error:controller.signal.aborted?'':safeText(e.message).slice(0,1800)};await store.save(latest);}
+        }finally{if(ownsLock)operations.delete(p.id);}
+      }finally{
+        if(draft)await fs.rm(draft,{recursive:true,force:true}).catch(()=>{});
+        if(preparations.get(p.id)===entry)preparations.delete(p.id);
+      }
+    })();
+    // Background failures are persisted above; never leave an unhandled rejection.
+    entry.finished.catch(()=>{});return entry.finished;
+  }
+  async function cancelPreparation(id){const entry=preparations.get(id);if(entry){entry.cancelledByRun=true;entry.controller.abort(new Error('superseded'));await entry.finished;}}
+  async function initializeProject(title,sample=false){const p=await store.create(title,sample);if(closing){p.initialization={state:'interrupted',phase:'应用关闭，预览准备中断'};await store.save(p);throw new Error('应用正在关闭。');}prepareProject(p);return store.public(p);}
   let initialError='';
-  const initialization=(async()=>{
+  const projectsAvailable=(async()=>{
     if(!seed)return;
     try{
       const projects=await store.list();
       if(!projects.length)await initializeProject('日常 · 习惯打卡',true);
-      else for(const item of projects.filter(p=>p.sample&&!p.ready)){
-        const project=await store.get(item.id),draft=await store.draft(item.id);
-        await build(draft,{onLog:text=>console.log(text)});await store.commit(project,draft,'恢复初始示例');
-      }
+      // An interrupted first model task must keep revision zero for explicit resume.
+      else for(const item of projects.filter(p=>!p.ready&&!p.tasks?.length))prepareProject(await store.get(item.id));
     }catch(e){initialError=e.message;console.error('初始编译失败：',e.message);}
   })();
-  app.get('/api/bootstrap',async(req,res)=>{await initialization;res.json({projects:await store.list(),settings:publicSettings(),previewOrigin,initialError});});
+  const initialization=projectsAvailable.then(()=>Promise.all([...preparations.values()].map(entry=>entry.finished))).catch(e=>{initialError=safeText(e.message);});
+  app.get('/api/bootstrap',async(req,res)=>{await projectsAvailable;res.json({projects:await store.list(),settings:publicSettings(),previewOrigin,initialError});});
   app.get('/api/projects',async(req,res)=>res.json(await store.list()));
   app.get('/api/projects/:id',async(req,res)=>res.json(store.public(await store.get(req.params.id))));
   app.get('/api/projects/:id/files',async(req,res)=>{const p=await store.get(req.params.id);const dir=p.ready?path.join(store.dir(p.id),'revisions',String(p.revision)):path.join(store.dir(p.id),'current');res.json(await readSources(dir));});
@@ -97,7 +131,7 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
     try{await pending;res.json({ok:true});}finally{if(storageQueues.get(id)===pending)storageQueues.delete(id);}
     }finally{storageRequests.delete(pendingRequest);finish();}
   });
-  app.post('/api/projects',async(req,res)=>{res.json(await initializeProject(req.body.title));});
+  app.post('/api/projects',mutation(async(req,res)=>{res.json(await initializeProject(req.body.title));}));
   app.post('/api/settings',settingsMutation(async(req,res)=>{
     const candidate=parseSettings(req.body,config);
     if(credentialStore){try{await credentialStore.save(candidate);}catch{throw new Error('系统安全存储写入失败，模型设置未保存。');}}
@@ -130,6 +164,7 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
     if(closing)throw new Error('应用正在关闭。');
     preparingRuns++;try{
     const id=req.params.id;assertIdle(id);if(!config.apiKey)throw new Error('请先连接模型并填写 API Key。');
+    await cancelPreparation(id);
     const project=await store.get(id);if(closing)throw new Error('应用正在关闭。');let previous;
     if(req.body.resumeTaskId){previous=project.tasks.find(t=>t.id===req.body.resumeTaskId);if(!previous||!['interrupted','failed','stopped'].includes(previous.state))throw new Error('任务不能继续。');if(previous.sourceDigest!==await sourceDigest(store,project)||previous.baseRevision!==project.revision)throw new Error('源码或版本已变化，请核对当前预览后提交新的需求。');}
     let prompt=previous?.prompt||String(req.body.prompt||'').trim();if(req.body.repair){const e=project.runtimeErrors.at(-1);if(!e||e.revision!==project.revision)throw new Error('没有当前版本的运行错误。');prompt='修复当前运行错误，并用实际功能检查验证：'+JSON.stringify(e);}
@@ -173,7 +208,7 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
   else{const {createServer}=await import('vite');vite=await createServer({root:APP_ROOT,server:{middlewareMode:true},appType:'custom'});app.use(vite.middlewares);}
   app.use((err,req,res,next)=>{if(res.headersSent)return next(err);const message=err.message||'操作失败。';res.status(400).json({error:message});});
   let server;try{server=await listen(app,port);}catch(e){previewServer.close();await vite?.close();throw e;}
-  return {url:`http://127.0.0.1:${server.address().port}`,previewOrigin,token,store,ready:initialization,close:async()=>{closing=true;const runningJobs=[...jobs.values()];for(const job of runningJobs)if(!job.publicationStarted)job.abort(new Error('service-close'));await Promise.all(runningJobs.map(job=>job.finished));await Promise.all([...activeMutations,...storageRequests,...storageQueues.values()]);await vite?.close();server.closeAllConnections();previewServer.closeAllConnections();await Promise.all([new Promise(r=>server.close(r)),new Promise(r=>previewServer.close(r))]);}};
+  return {url:`http://127.0.0.1:${server.address().port}`,previewOrigin,token,store,ready:initialization,close:async()=>{closing=true;await projectsAvailable;const preparing=[...preparations.values()];for(const entry of preparing)entry.controller.abort(new Error('service-close'));const runningJobs=[...jobs.values()];for(const job of runningJobs)if(!job.publicationStarted)job.abort(new Error('service-close'));await Promise.all([...preparing.map(entry=>entry.finished),...runningJobs.map(job=>job.finished)]);await Promise.all([...activeMutations,...storageRequests,...storageQueues.values()]);await vite?.close();server.closeAllConnections();previewServer.closeAllConnections();await Promise.all([new Promise(r=>server.close(r)),new Promise(r=>previewServer.close(r))]);}};
 }
 function listen(app,port){return new Promise((resolve,reject)=>{const server=app.listen(port,'127.0.0.1',()=>resolve(server));server.on('error',reject);});}
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){const studio=await startStudio({port:Number(process.env.STUDIO_PORT||5173),production:process.argv.includes('--production')});console.log(`Sprout Studio: ${studio.url}`);const exit=async()=>{await studio.close();process.exit(0);};process.on('SIGINT',exit);process.on('SIGTERM',exit);}

@@ -40,7 +40,7 @@ test('API requires session token, rejects preview-origin requests, and persists 
     assert.equal((await fetch(studio.url+'/api/bootstrap',{headers:{...headers,Origin:studio.previewOrigin}})).status,403);
     const saved=await fetch(studio.url+'/api/settings',{method:'POST',headers,body:JSON.stringify({provider:'deepseek',baseUrl:'https://api.deepseek.com',model:'test',apiKey:'never-persist-this'})});assert.equal(saved.status,200);
     assert.equal((await saved.json()).hasKey,true);assert.ok(!(await fs.readFile(path.join(store.root,'settings.json'),'utf8')).includes('never-persist-this'));
-    const p=await(await fetch(studio.url+'/api/projects',{method:'POST',headers,body:JSON.stringify({title:'API test'})})).json();assert.equal(p.ready,true);
+    const p=await(await fetch(studio.url+'/api/projects',{method:'POST',headers,body:JSON.stringify({title:'API test'})})).json();assert.equal(p.ready,false);for(let i=0;i<100&&!(await studio.store.get(p.id)).ready;i++)await new Promise(r=>setTimeout(r,20));assert.equal((await studio.store.get(p.id)).ready,true);
     const response=await fetch(studio.url+`/api/projects/${p.id}/export`,{headers});assert.equal(response.status,200);const buf=Buffer.from(await response.arrayBuffer());assert.equal(buf.subarray(0,2).toString(),'PK');
   }finally{await studio.close();}
 });

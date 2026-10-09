@@ -266,3 +266,28 @@ qa-r5-resource-report.json / qa-r5-ui-report.json 均 passed=true。唯一新包
 以后正常关闭测试窗口后用此入口重开，继续同一加密配置；后续换测试版本仅改exe指向，保留userData/workspace。直接双击exe会使用默认路径，与此隔离测试配置不同，不能据此要求用户反复输入。测试入口和临时数据不纳入Git产品；现有空设置窗口/session32926保持，用户真实录入仍由A正常操作，不从聊天或旧进程搬Key。
 
 本轮QA记录与报告已保存并冻结，可由B按明确清单提交QA文档；QA不操作Git。真实模型链未运行、等待正常录入条件，不把保窗口连接说成后台制作。
+
+### 2026-10-09 r5 真实模型链当前阶段（QA，15:27）
+- 实际运行固定 r5 c09726bc（resources/app），API60775/preview60774，主exe PID49428。D:/app源码工具说明后续修改不会热加载进这个包；未更换/重启旧窗口，未读凭据或密码。
+- 新QA项目4a163845-8445-431a-8ba4-e7fb40f319c0。首版真实生成task7197d608完成rev2，9tools/1build/1verify；完整sourceDigest46c390639abe0e9ae0b1dcc81fbf63687ce8f6bc65417a22eca3ed658bc95e6d。独立short、120纯中文严格input值与375×720完整viewport像素解码、empty通过；Weapp19文件+官方编译产物保留。报告qa-r5-real-rev2-report.json / artifacts.json。
+- 首次历史修改task79b94ac1失败，9tools/1build/3actualverify/4calls，第4budget停止；rev2全源码deepEqual未改。只提取同task已sanitize verify参数/result+write_file，未整session dump。三次失败是测试排序/跨call初始空storage假设错，均未到qr动作；不证明二维码坏。qa-r5-history-failure-plan.json及failed-draft-sources.json仅未发布稿。
+- B授权唯一自然反馈task418f3bbd完成rev3，10tools/1build/2actualverify（另1次22steps schema拒绝）；digest49a163f850ebc54a93eb90ebcf94e8382d8ad1c99e2b0480dd5346c2185a6f56。但独立原断言发现点击历史回载重生成未前移，loadHistoryItem只buildQr遗漏pushHistory；本次自然反馈明确“点B重新生成后应为B/D/C”，负责人判定必须阻塞。不得用任务passed替代业务验收。
+- 自动审批拒绝调整排序期望，理由可能掩盖原需求失败；操作未执行。原失败qa-r5-real-rev3-report.json、recall-order-failure.json保留。B随后授权只跳过阻碍继续的排序throw但保留同项failed、总体false，在remaining-report.json记录其它独立结果；未改成现状passed。
+- rev3其它实测：3条上限、新生成排序、点击回载120字+Q及真实QR、实际Studio iframe父页面刷新保留、清当前不删历史、清历史不改当前120字与QR、清历史刷新为空通过。独立canonical375×720四等级L/M/Q/H的短中文/120字严格input值/完整可见boundingBox/整viewport解码与empty通过9项。实际Studio iframe379×656单独记录，locatorQR解码仅作回载内容证据，不混同完整手机布局证据。
+- rev3 ZIP qa-r5-real-rev3-with-history-NOT-ACCEPTED.zip 已实际导出，15源码等于API、19Weapp等于revision3产物、MIT许可/项目目录核对通过；qa-r5-real-rev3-export-report.json明确业务未验收。未restore，避免修正前额外build。A/B已批准一次针对该真实遗漏的自然修正，从当前rev3继续，仍40tools/3build/3verify/10min，不再自行循环。
+- 本轮模型与后续独立验收唯一操作者仍QA；C只写产品源码/工具说明，不操作QA项目。报告均在D:/app/test-results；产品、Git、TASKS未写。
+
+### 2026-10-09 15:30 专项修正已独立通过，实际恢复进行中
+- A/B另外明确批准一次实际代码遗漏修正，task4b2a6e67-f7b8-4f94-8f29-8e60da395182从rev3运行生成rev4；8tools/1build/2actualverify，另1次超20steps schema拒绝未进入browser，未放宽40tools/3build/3actualverify/10min上限。
+- rev4 digest9a25523e0dacbc798fdcca8912614dc231292d2cedb04a56a44e864a9343e105。独立原排序断言未放宽，15项通过：生成4条后保留最新3、点击120纯中文Q回载及真实QR并前移首位、实际Studio父页面刷新首位保持、清当前保留历史、清历史保留当前文字QR且刷新仍空、L/M/Q/H各短中文+120纯中文input值严格等值、整375×720viewport二维码box可见且实际像素严格解码、empty反馈。qa-r5-real-rev4-report.json包含每个截图SHA和box；H120整图人工查看含完整quietzone。
+- 模型自身qr工具也实际解码历史B-BBB两次，见qa-r5-history-fix-plan.json；只是本QA task verify参数/结果定向提取，非整session。前两次失败与rev3代码缺陷证据完整保留，不被覆盖。
+- qa-r5-real-rev4-with-history.zip是含修正历史业务的版本4，15源码逐项与API等值，19微信产物逐字节与immutable revision4相同，MIT许可与miniprogramRoot核对通过。ZIP SHA/各source与WeappSHA/版本需求历史见qa-r5-real-rev4-export-report.json。
+- 随后仅对本QAproject POST restore原rev2，正常实际双端重编译一次形成rev5；这是独立恢复验收scope，不是模型再次尝试。已先保存业务版ZIP，最终活跃版本将为恢复版5，不可把它称为含历史功能版本。恢复源码exact/需求记忆/项目历史storage不删除及strictdecode待恢复完成后更新。
+
+### 2026-10-09 15:32 真实全链独立QA完成，文档冻结交B验收
+- 实际restore完成rev5：15个源码与原真实生成rev2全量deepEqual，digest恢复为46c390639abe0e9ae0b1dcc81fbf63687ce8f6bc65417a22eca3ed658bc95e6d；原rev2/rev3/rev4文件再次比较均不可变。版本1–5保留，最新需求变更逐项保留并新增恢复记录。
+- 本QA项目storage.json恢复前后内容完全相同，保留“恢复源码也保留这条历史”/H；没有擅自删除历史数据。恢复版5源码本身没有历史UI，这是恢复首版的预期，含历史业务版请使用rev4 ZIP。
+- 恢复后独立375×720短中文/120纯中文实际输入严格等值、整个QR含quietzone box完整可见、完整viewport像素严格decode、empty反馈3/3通过。产品public verification按设计显示pending“版本恢复后需要重新验证功能”，不能写作产品自动passed；外部独立证据qa-r5-real-rev5-report.json已通过。
+- 最终总报告：D:/app/test-results/qa-r5-real-chain-final-report.json。已验证业务版本4源码digest9a25523e0dacbc798fdcca8912614dc231292d2cedb04a56a44e864a9343e105；交付D:/app/test-results/qa-r5-real-rev4-with-history.zip，SHA256dec925a0503c62be85a3cdc5b056d68fc490b580ba43e3e3733ac09a5f924eef。历史失败报告和NOT-ACCEPTED ZIP仅证据，不冒充交付。
+- 留存实际r5窗口：mainPID49428，APIhttp://127.0.0.1:60775，previewhttp://127.0.0.1:60774，连接session32926不关闭。稳定入口D:/app/release-harness-20261009-r5/打开安全保存测试版.cmd沿用同userData/workspace；不重新索取已保存Key。最终QAproject4a163845-8445-431a-8ba4-e7fb40f319c0当前rev5恢复版。
+- 本轮真实模型调用和实际交互验收已结束；未声称后台继续工作。下一负责人B独立审核报告/ZIP/截图并汇总A。微信真机、登录、上传与发布不在本结论。没有额外模型尝试、产品写入或Git操作。

@@ -177,3 +177,27 @@ B 检查实际代码、执行相称的独立验证，不能仅据 C 汇报宣称
 - 新窗口已就绪：title“小芽 · r4 真实验收（新模型配置窗口）”，PID14572，API http://127.0.0.1:58362 / preview58361，隔离D:/app/test-results/qa-r4-wazkY0/{user-data,workspace}，明确非模型fixture90bad993…，bootstrap hasKey=false/initialError空。安全空设置截图qa-r4-settings-empty.png由B实看无Key；输入后不截密码或读值。旧r3未动。
 - 当前模型流程没有运行，等待用户在该新窗口正常配置并保存接口（不聊天发Key）；A已收到具体入口/批准Git上传问题。QA维护连接session34143保留新exe，不是模型作业或永久后台承诺。输入就绪由A通知B，B复用QA唯一操作者继续自然需求新项目→120纯中文实际值→375×720 viewport完整图像解码→业务修改→旧版保留→ZIP，不以非模型fixture交付。
 - 恢复入口：本工作包/QA记录/r4 manifest；先核对新PID和bootstrap hasKey公开布尔，若新窗口已退出需新正常配置，不提取旧Key。B继续唯一负责人；模型未就绪不反复测试或扩大范围。Git上传阻塞仍由A取得具体授权，本地产品1cbf5ce与清单脚本55c5087均保留。
+- Git同步阻塞已解除：B直接读取A用户turn01a11f5d-b992-7961-a86c-2331e445b84f原文“可以上传，可以批量上传”，按新明确授权走正常审批git push成功origin/main 8ce52e9→e9b057334f214b5490eef0b0ff73995e2d15f981，含产品1cbf5ce/清单55c5087/本记录e9b，未纳A未提交台账或数据凭据。本行同步后记录待后续协调纳入；A可独占Git维护台账，B当前不再Git避免并发。已续派QA单次公开hasKey检查，就绪即原授权真实全链。
+
+### 配置持久化子项（2026-10-09，用户最新直接授权）
+- A传达直接用户新指示：反复要求已保存APIKey属于配置管理问题，要求PM检查修复；用户已向A给测试Key并授权本项目保存使用后注销。此授权不把密钥下发工作包；B/C/QA不得从历史聊天提取Key、复制旧user-data、读旧Key/进程内存/设置凭据，不记入Git/日志/任务文件。A负责当前新r4正常安全录入。
+- B实际源码确认：server/index启动明确apiKey为空，POST settings仅内存更新、普通settings剔除apiKey，UI写明退出需重输；不是用户没保存。独立QA r4 user-data/workspace有意隔离，不能自动继承旧进程；正常版本升级使用同默认app.userData路径，需持久化后恢复。两个行为区别不得混称升级丢Key。
+- r4正常UI password POST /api/settings可写入，未见请求body/headers日志；保存只回公开hasKey，不回填Key，API访问token/Host/Origin限制保持。A建议仅正常填写保存，不额外test模型，不读密码值/抓包/截图输入后窗口。新r4目前仅内存，不能承诺已持久保存。
+- 复用调研：Electron38.8.6官方tag https://github.com/electron/electron/blob/v38.8.6/docs/api/safe-storage.md，主进程safeStorage encryptString/decryptString及Windows DPAPI；现main46同步API移除不适用本机38。对比electron-store普通配置/secure-electron-store额外IPC依赖，不为一个凭据引新库或自造加密，最小原生adapter+原子加密文件，禁止明文fallback/basic_text。
+- 唯一writer C /root/harness_engineer_resume 接手Electron原生vault+server注入load/save/clear接口及UI真实状态；同endpoint留空保留、换endpoint不可错用Key、清除持久/内存、错误不能报保存成功/并发写串行。新正常UI录入后存自身vault，禁止旧明文/进程Key迁移。
+- QA /root/harness_qa_resume独立真Electron/DPAPI占位Key验证正常重开、同userData版本切换、不同隔离目录不共享、清除/错误/端点绑定、无明文及导出排除。无需实际测试Key、模型/QR重复编译。若A r4录入就绪，QA按原授权独占真实模型完整链同步推进；此子项不无限阻塞原业务验收。
+- B继续负责人，A独占台账/Git当前协调；产品尚在方案/实现阶段未交付，不自行打包或宣布已保存测试Key。
+- C最终6文件冻结：credential-store.cjs（SHA173f8799021ed90e8919876285c56558c5ff3b23dd93ca8a5511fd95997f96df）、electron/main.cjs、server/index.mjs、src/main.jsx、tests/credentials.test.mjs、docs/harness-implementation.md。桌面encrypted全配置唯一权威，dev内存；6占位专项passed、Vite界面构建passed，非原生加密结论。B独立保存失败close1/1、HTTP断线/stop/resume/close1/1passed。产品未提交/包，A当前Git独占待协调。
+- 独立QA真Electron38 DPAPI三进程组件passed qa-credential-component-report.json：实际密文不含QA占位Key/endpoint、重建实例全配置恢复、同userData不同入口/名称跨进程恢复、不同路径应用不共享（非DPAPI路径绑定）、clear第三进程重开Key空且endpoint/model保留；rename失败旧vaultSHA不变/temp清理/固定无泄漏错误，损坏cipher固定warning留原文件；unavailable/Linux basic_text只fake分支证明，不冒称Linux实机。QA正接最终source server/UI集成，不模型/真实Key或旧vault。
+- r4包未含持久化；必要新r5有限1包/30分钟的具体理由及范围已交A，待QA集成通过和Git交还后固定源码基线再执行，不自行重包，不重QR编译/迁移用户旧Key。
+- A compact wait显示当前waitingOnApproval、最新工具为电脑安全录入，非Git；B已将必要r5具体原因/版本差异/范围报告A。依据用户最新明确配置修复及原自主交付授权，接续一次必要r5/30分钟，避免独立QA结束后无实质执行；不扩大旧r4轮次数（新配置子项新轮），不再询问用户普通打包许可。Git index空，明确6产品文件保存c09726bc42281ec8c6115b3a2bfe39b23deb646f，A未提交管理文件未代纳，B通知A暂不Git至manifest绑定。
+- C已实际接手唯一r5打包：新stage .package-staging-harness-20261009-r5、新output release-harness-20261009-r5，固定basec097；最多1包/30分钟、脚本25分钟。不QR业务重编译/读真实vault/触碰旧r3/r4服务。QA已续派新包raw/Git资源、新UI、真实exe占位Key正常保存→正常quit→同路径重开/clear与隔离相称检查，不重复全部source专项。
+- 源修复c09726bc42281ec8c6115b3a2bfe39b23deb646f已按明确批量上传授权正常push origin/main成功（e9b0573→c09726b）。B实际读独立qa-credential-component-report.json与qa-credential-api-report.json，原生Electron38.8.6/Node22.22/Windows，sourceHash与最终冻结文件一致；只QA自有占位密钥，无外部模型。组件三个独立进程、API六项passed。
+- r5有限轮实际开始14:53:30、截止15:23:30，C单包新stage/output，UI构建已过、实体exe复制完成、离线依赖修补在执行；manifest未生成前不交付。QA已实际接手新包验收准备，不重复旧QR构建。
+- r5唯一包14:56:13完成exit0，manifest base/finalizer均c09726bc42281ec8c6115b3a2bfe39b23deb646f，B独立39实际资源rawhash全部匹配；package生产stage/actualraw一致standardChange none，credential173f8799...97f96df、servercc42960b...ca126，decoder1.4.0/3.4.0。没有第二包或finalize补救，不修改旧r3/r4。
+- 独立QA实际r5新exe完整相称检查passed：qa-r5-resource-report.json的39资源/Git归一、3个新dist文件package=stage完全匹配；qa-r5-ui-report.json真实UI占位save→normalquit→同userData另一workspace重开hasKeytrue/endpoint+model恢复/renderer密码框空→UIclear→再重开false→全新另userData空配置。0次/settings/test、无模型/QR构建。此配置子项已实现、已包内测试、已交付、已独立验收；原真实模型二维码链仍未通过。
+- 新空模型窗口保留：title“小芽 · r5 安全保存（新模型配置窗口）”，PID51536，API http://127.0.0.1:60775 / preview60774，D:/app/test-results/qa-r5-0GQekX/user-data-for-real-input及workspace-for-real-input，session32926仅连接，不模型作业。QA占位vault另隔离，输入后不读值/截图password/读取真实vault。A已收到具体入口，负责以用户直接给A的测试Key正常UI安全录入，B/C/QA不从聊天取Key或旧服务迁移；不再索取用户重复给Key。
+- 为后续同一隔离测试目录正常重开，QA提供显式稳定启动入口只包含r5exe/userData/workspace路径，不含Key/token，无删除/复制/迁移；直接exe会选默认目录，不混同为加密持久化失败。正常产品升级默认同用户目录的恢复仍由source三进程/包同userData重开证据覆盖。
+- 固定重开入口已创建并由B只读核对：D:/app/release-harness-20261009-r5/打开安全保存测试版.cmd，只固定上述r5 exe/userData/workspace并清继承STUDIO_URL/ELECTRON_RUN_AS_NODE，无Key/token/删除复制迁移；3路径存在且与qa-r5-ui-report.json readyForInput一致。当前窗口未额外开关，后续同入口正常重开继续同一加密配置；升级程序路径变化时保持userData，不自动提取/迁移任何旧Key。
+- 当前C/QA实现与相称验证已结束，未真实模型调用；窗口session32926仅保留连接。实际测试Key未由B/C/QA录入或读取，不能承诺已存好。A负责正常安全录入，公开hasKey就绪后通知B，B立即复用harness_qa_resume唯一真实自然需求生成→120纯中文实际值+375×720完整viewport解码→短文/空反馈→真实业务修改→旧版保留及恢复→ZIP版本对应。当前没有其它必须的离线验收，不重复旧测试/擅自扩大范围。
+- B继续负责人，恢复入口本包/QA记录/r5 manifest/固定启动入口。Git本轮产品c09726b已远端同步，随后本工作包与QA最终记录明确两文件提交正常同步；A独占台账不代纳，B完成后归还Git协调。总HARNESS未完成，配置子项单独验收通过。

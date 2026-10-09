@@ -213,3 +213,56 @@ QA实际使用新包exe的Electron38.8.6/Node22.22导入包内Store/verify，在
 新exe窗口保留供用户正常配置，工具session34143仅保持该新窗口连接，未执行模型任务；不宣称QA在后台制作。旧r3服务54526及其Key未停止/重启/读取/转移，新userData的settings/auth文件也未读取。应用访问token仅请求内存使用，未写报告或输出。之后用户输入后禁止截图密码框或读取其值；只通过公开hasKey确认输入条件。
 
 下次入口：B/A确认用户在此新r4窗口正常保存模型配置后，QA通过新API公开状态核对空闲，唯一发起新独立真实模型项目。先120纯中文实际输入完整/二维码在375×720内全图可见并viewport截图解码，再连续业务修改、空反馈、版本保留和ZIP源码/微信产物对应。未输入时此真实模型分支具体等待正常配置，不将r4离线验收宣布全任务完成。
+
+## 模型配置持久化续派：独立验收计划（当前待实现）
+
+B传递A已核实的直接用户新授权：实现退出重开/升级后保留模型配置，C唯一产品writer采用现有Electron38原生safeStorage；QA仅独立测试与本记录，Git由A当前独占。测试占位Key必须由QA自己生成，只放新隔离测试工作区/进程，不从聊天或旧r3/r4密钥提取、迁移或截图。当前r4录入途径单次公开核对hasKey仍false，无任务运行；窗口与session34143保留，真实模型等待A正常安全录入，不因等待持久化而停止此可独立旧r4真实链。
+
+当前r4包实际只读检查：UI“保存设置”POST /api/settings，不自动执行/test；服务器此路由不日志req.body，保存设置剔除apiKey，响应public apiKeyundefined且仅hasKey布尔。显式“测试连接”才POST /api/settings/test触发模型请求。没有调用此测试API，没有读取密码值或真实settings/auth文件。
+
+独立验收采用新Electron进程与新userData/workspace、自己生成占位Key和受控本地假模型，先确认原生safeStorage.isEncryptionAvailable及真正encrypt/decrypt能运行；不能把Mock加密通过写作Windows DPAPI通过。检查磁盘不存在占位明文、public响应不返回Key、请求body不被日志；通过本地假模型只在受控验收路径比较请求认证是否等占位值，报告仅布尔，不输出认证。
+
+必要步骤：正常保存/退出/重开hasKey及假模型认证恢复；相同userData/workspace模拟下一版本/入口升级保留；新不同隔离路径默认hasKeyfalse且不读其它路径；清除后重开false；切换端点不携带旧Key；无安全加密能力、损坏密文、解密失败、文件写失败等明确安全失败，没有明文降级或错误信息泄露。重用有效二维码产物，不新增QR编译。失败必须具体报告并回C有限修复，不无限重包或模型调用。
+
+安全边界依据Electron官方safeStorage文档 https://www.electronjs.org/docs/latest/api/safe-storage ：Windows同步API使用DPAPI，保护不同登录用户，不能宣称抵御同Windows用户其它应用。不同隔离路径不共享是应用路径隔离，不是DPAPI绑定该路径；同路径升级只验证同一机器/用户，不推定另一机器可解密。最新版文档异步API可用性不推定Electron38支持，需本机既有类型与真实运行核对。后续产品冻结后QA按实际接口安排独立脚本，目前尚未运行此新增持久化验收。
+
+### 新持久化组件：真Electron DPAPI独立验证已完成（2026-10-09 14:48 北京时间）
+
+qa-credential-component-report.json passed=true；模块原始SHA173f8799021ed90e8919876285c56558c5ff3b23dd93ca8a5511fd95997f96df前后未变。全新qa-credentials-gfw3lX目录，QA自造占位Key，实际Electron38.8.6/Node22.22/Windows原生safeStorage，三次独立进程，没有模型或旧用户凭据：
+
+- 首次保存后新组件实例精确恢复私有完整配置；实际cipher不含占位Key或endpoint明文。
+- 更换程序入口与app名称、相同userData的第二进程恢复占位配置；新不同路径load为null，仅应用路径隔离，不宣称DPAPI路径绑定或其它Windows用户测试。
+- clear加密保存空Key并保留指定endpoint/model；第三次进程重开仍为空Key且新配置保留。
+- 注入rename失败：已有cipher原始SHA不变、临时文件清理、错误固定且不含占位Key，旧配置仍可读。
+- 使用真正native DPAPI读取QA损坏cipher：固定安全警告、原bytes保留。unavailable与Linux basic_text仅注入分支拒写证据，不宣称实机Linux后端或真实系统故障。
+
+### 新持久化源服务：真实DPAPI/API集成独立验证已完成
+
+qa-credential-api-report.json passed=true，qa-credential-api-RvwOvA全新userData/workspace；实际Electron38.8.6/Node22.22，startStudio注入原生vault且seedfalse，无编译或外部模型。源hash：credential173f8799；server/index.mjs cc42960ba378d87dc22a88e344b551491d765d24790509adb211f139296ca126；electron/main.cjs ad773f633c779dc3733a9920fed5cb02a3b2d37f454e3fe35ffe089a6ffd411a；src/main.jsx abcd1753dc84b69243ac61623ee8b8ad1119d7674b77c1170db9394010cbc248。
+
+独立六项：公开保存使用真DPAPI后服务重启bootstrap恢复hasKey/model/endpoint且API响应无Key；注入本地Agent只用布尔核对恢复后的占位认证，不外部请求；API端点切换不携带旧Key；API清除后重启仍空Key且保留endpoint/model；不同userData公开hasKeyfalse；真native损坏vault启动返回固定公共warning并保留原cipher。所有响应/任务事件检查不含占位值，报告未保存认证或私有配置。
+
+边界：这证明冻结源码组件与源服务注入的原生Windows安全保存/恢复，不是尚未生成的新r5包或真实用户模型链。源码main接入只读核对，未把实际服务注入测试写作新exeUI已验收；真实模型现有r4分支仍独立等待正常配置。C六项fakecrypto/并发测试和B关闭门控证据按各自版本复用，不重复整个QR构建/旧回归。
+
+## r5实际新包持久化独立验收（2026-10-09 14:58 北京时间）
+
+qa-r5-resource-report.json / qa-r5-ui-report.json 均 passed=true。唯一新包 release-harness-20261009-r5/win-unpacked/Sprout Studio.exe，manifest产品/打包绑定c09726bc42281ec8c6115b3a2bfe39b23deb646f；39固定资源rawSHA逐项等manifest，并与此Git提交内容仅行尾归一后匹配。新credential-store.cjs原SHA173f8799...97f96df对应此前真DPAPI组件；server cc42960...ca126。package生产字段按明确变化核对，无其它字段放宽。新UI三个pack dist文件逐字节等本轮stage产物，JS含“正常重开或升级无需重新输入”新提示，记录src/main.jsx绑定Git摘要；这不是拿旧r4界面证明新功能。
+
+真实新r5exe四次独立启动，Electron38.8.6/Node22.22，isPackaged/appPath/userData/native safeStorage可用/renderer隔离全部实测。占位流程只在qa-r5-0GQekX独立目录，未读旧r3/r4或用户vault：
+
+1. 正常UI自定义服务保存QA自造占位Key，公开hasKey=true、keyStorage encrypted/available/persisted=true且无Key内容；实际界面明确安全保存；没有自动/test请求（累计0）。
+2. 正常quit后同userData、另workspace重开，endpoint/model/hasKey/persisted均恢复；新打开设置的password空，renderer没有回填Key。此为同包重开与workspace改变，实际二进制升级概念另复用此前组件不同入口/程序名相同路径的3进程证据，不宣称已跑两版exe自动升级器。
+3. 正常UI清除后quit再重开hasKey=false，endpoint/model保留。
+4. 全新不同userData再启动hasKey=false、不共享占位vault；空设置窗口留给正常真实录入，不能把测试占位留给用户。
+
+新空真实录入窗口：PID51536，主API http://127.0.0.1:60775，preview http://127.0.0.1:60774，标题“小芽 · r5 安全保存（新模型配置窗口）”。userData D:/app/test-results/qa-r5-0GQekX/user-data-for-real-input，workspace同root的workspace-for-real-input；与已清除的占位测试user-data隔离。安全空设置截图qa-r5-settings-empty.png已视觉核查，仅在用户输入前拍摄，后续禁止再拍密码框或读值。session32926只保新窗口连接不关；旧r3/r4均未停止或迁移Key，r4原session34143亦保留。
+
+此轮没有新二维码编译、重复解码或真实模型调用。复用明确非模型旧H5只用于避免首次启动空workspace自动编译示例，不据它证明新模型/微信功能。持久化源与实际新包限定验收通过；真实模型二维码生成、120纯中文完整可见像素解码、连续修改、版本恢复和导出仍须正常新窗口录入后由QA唯一继续。QA本轮证据/记录已保存，产品与Git保持不写，B统一交付。
+
+### 保持同一配置的正常重开入口
+
+已建立本机可审阅入口 D:/app/release-harness-20261009-r5/打开安全保存测试版.cmd，显式设置userData/workspace为上述当前真实录入窗口的user-data-for-real-input/workspace-for-real-input，并启动完整r5exe。只清空可能继承的STUDIO_URL/ELECTRON_RUN_AS_NODE启动变量，没有Key/token、文件删除、复制、迁移或外部网络指令。内容逐字段等当前readyForInput报告，三个目标路径均实际存在，脚本SHA写入qa-r5-ui-report.json；本次只检查内容，没有再次启动或关闭已有窗口。
+
+以后正常关闭测试窗口后用此入口重开，继续同一加密配置；后续换测试版本仅改exe指向，保留userData/workspace。直接双击exe会使用默认路径，与此隔离测试配置不同，不能据此要求用户反复输入。测试入口和临时数据不纳入Git产品；现有空设置窗口/session32926保持，用户真实录入仍由A正常操作，不从聊天或旧进程搬Key。
+
+本轮QA记录与报告已保存并冻结，可由B按明确清单提交QA文档；QA不操作Git。真实模型链未运行、等待正常录入条件，不把保窗口连接说成后台制作。

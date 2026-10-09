@@ -12,7 +12,8 @@
     "test": "node --test tests/*.test.mjs",
     "pack": "node scripts/package-desktop.mjs",
     "test:harness-ui": "node scripts/harness-ui-check.mjs",
-    "test:harness-real": "node scripts/harness-real-check.mjs"
+    "test:harness-real": "node scripts/harness-real-check.mjs",
+    "test:harness-business": "node scripts/harness-business-check.mjs"
   },
   "dependencies": {
     "@babel/preset-react": "^7.27.1",

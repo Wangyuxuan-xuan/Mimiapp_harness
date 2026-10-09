@@ -77,16 +77,17 @@ export class Store {
     for(const [name,content] of Object.entries(sources)) await writeSource(dir,name,content);
     return dir;
   }
-  async commit(project,draft,label) {
-    const files=await readSources(draft);
-    // Build a fresh immutable revision; serving switches only after both builds pass.
-    const revision=project.revision+1;
-    const target=path.join(this.dir(project.id),'revisions',String(revision));
-    await fs.cp(draft,target,{recursive:true});
-    for(const [name,content] of Object.entries(files)) await writeSource(path.join(this.dir(project.id),'current'),name,content);
-    project.revision=revision; project.ready=true; project.updatedAt=Date.now();
-    project.versions.push({id:randomUUID(),revision,label:label.slice(0,80),time:Date.now(),files,memory:structuredClone(project.memory),verification:structuredClone(project.verification||{state:'pending'})});
-    await this.save(project); return project;
+  async commit(project,draft,label,{signal,beforePublish}={}) {
+    signal?.throwIfAborted();const files=await readSources(draft);signal?.throwIfAborted();
+    const revision=project.revision+1,target=path.join(this.dir(project.id),'revisions',String(revision));let published=false;
+    try{
+      await fs.cp(draft,target,{recursive:true});signal?.throwIfAborted();
+      // Canonical source is the published immutable revision; preparation never overwrites current.
+      signal?.throwIfAborted();
+      const next={...project,revision,ready:true,updatedAt:Date.now(),versions:[...project.versions,{id:randomUUID(),revision,label:label.slice(0,80),time:Date.now(),files,memory:structuredClone(project.memory),verification:structuredClone(project.verification||{state:'pending'})}]};
+      // This synchronous boundary rejects later stop requests before any publication await.
+      beforePublish?.();await this.save(next);published=true;Object.assign(project,next);return project;
+    }finally{if(!published)await fs.rm(target,{recursive:true,force:true}).catch(()=>{});}
   }
   previewDir(project) { return path.join(this.dir(project.id),'revisions',String(project.revision),'dist','h5'); }
 }

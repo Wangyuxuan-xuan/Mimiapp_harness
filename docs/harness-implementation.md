@@ -49,3 +49,21 @@ npm run test:harness-real
 当前测试与报告版本对应：本轮基线为 36916ae，真实三类报告于 2026-10-09 03:54:35 UTC 启动，来源是该基线上的开发工作区；不把它宣称为最终提交每一行代码的完整验证。该轮实际加载的实现已含原生文件会话、CSP/存储桥与有上限文本断言等待。该轮启动后补入的改动是：严格拒绝空业务断言/非法数量、验证显式版本及摘要快照、界面显示覆盖步骤、任务工具计数/检查状态文案、外层清理覆盖初始化失败、长期需求移入系统上下文并启用 SDK compaction/压缩记录脱敏、无写入时也可保存功能检查结果、UI轮询跨项目取消和显示样式、checkpoint失败/硬中断/过时验证测试。最后一次 24/24 回归与前端构建、UI报告对应这些最终改动；B 另用最新检查器对三类最终回退产物做了真实交互复验，证据 `test-results/harness-b-acceptance.json`，执行者及结论由 B 工作包确认。
 
 QA 应先核对最终提交、上述报告的 compiler/model/interaction 字段和实际 root，再决定新增检查范围。检查“通过”只能指报告所列步骤。需要真实模型授权密钥的检查另开受控范围；无需向 QA 传递用户旧密钥或旧进程数据。
+## 独立 QA 后的边界修复（基线 abdbe7b，2026-10-09）
+
+独立 QA 在占位密钥/本机模拟模型下实证发现：分段 text_delta 拼接泄漏已知密钥；验证结果的 steps/storage 未脱敏而落入项目和版本；commit 入口门控后接受停止仍发布新版本；count 断言没有等待异步业务更新。原24项未覆盖这些边界，不能据此前通过结果否定缺陷。
+
+修复仍复用本地 PI 0.99.1 text_delta/message_end/abort 和原子 JSON 存储；另核对 [官方 SDK 文档](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/sdk.md)，不升级框架。少量宿主代码用于输出与版本发布边界：
+
+- 已知密钥跨 delta 时保留可能前缀，完整识别后才输出；中止/结束剩余前缀保守隐藏。Agent 和 NDJSON 出口均保护。嵌套验证结果在返回工具与保存前统一递归脱敏，包括步骤、存储值和对象属性名。
+- 候选项目承载未发布的检查结果与完成回复。Store 只准备新不可变目录，检查 signal 后进入明确的原子保存边界，不预写原 current。接受停止返回200时不发布、任务为stopped、旧版本/旧检查/旧完成回复保持；保存边界开始后停止返回409解释无法取消，不假称已停止。restore 使用同一边界；关闭/超时不会在保存边界内再触发取消。先等待检查点保存，再发起提交。
+- 数量断言与文本断言一样最多80次、每次50毫秒等待，防止200毫秒延迟更新误触发修复。
+
+针对入口 `node --test tests/security-boundary.test.mjs`：5/5通过，包含所有密钥切分、截断前缀、嵌套值/属性名、真实PI模拟输出、提交入口接受停止、保存中409与真实Edge延迟count。模型/编译/验证替身的范围由测试名和源码明确区分；count用真实Edge。QA原复现脚本及复验报告由独立QA保管，工程不改其输出。
+
+### 业务修改补验入口及前提
+
+`npm run test:harness-business` 每类只做一次真实 H5 构建与真实 Edge 业务断言：清单删除后数量及刷新数据归零；记录改值后合计及刷新更新；计算倍率由2改3并验证负数、非数字、零边界。通过真实 PI SDK 调用本机确定性模型读、写、编译、检查。它补业务修改证据，不把此前两次标题修改当作业务规则改变。
+
+此脚本复用 `test-results/harness-real-report.json` 指向的三类首版真实双端不可变产物。该报告/产物未上传，远端检出不可直接运行本专项。先检查本机已有有效报告和 root；缺失时需在隔离目录运行 `npm run test:harness-real` 生成所需基线，或由QA按同一源码准备明确标注的基线；不得指向用户 `.studio`。新报告为 `test-results/harness-business-report.json`，每类保存 root/projectId/revision/sourceDigest/步骤，QA可直接对其 revisions/2 独立执行 verifyPreview，不需重编译。后续修改微信端仍未验证；本轮没有真实模型密钥/费用、公开发布或新桌面打包。
+最终本轮证据：在 abdbe7b 上的修复工作区运行 `node --test tests/*.test.mjs`，29/29通过；`test-results/harness-business-report.json` passed=true，三类修改各真实H5/Edge通过。独立QA复验占位密钥流/持久化、接受停止与旧版本一致性、保存中409、restore边界、延迟count及辅助函数切分/截断前缀/属性名均通过，证据 `qa-special-recheck-report.json`、`qa-persist-recheck-report.json`、`qa-restore-report.json`、`qa-browser-report.json`。独立三类业务复验 `qa-business-report.json`：清单双项逐删/刷新0；记录3+2后最后2改9合计12/刷新12；计算三倍率/负数/非数字/零；均核对检查与版本/源码摘要匹配。上述报告均位于未上传的 test-results，由QA独立维护；对应最终产品提交由B/QA登记，不由工程修改QA记录。本轮未更改前端源文件，也未重复三类首版双端或全12阶段构建。

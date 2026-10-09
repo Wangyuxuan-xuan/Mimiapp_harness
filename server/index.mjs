@@ -7,7 +7,7 @@ import archiver from 'archiver';
 import { APP_ROOT,Store,atomicJson,readSources } from './store.mjs';
 import { buildProject } from './builder.mjs';
 import { runAgent } from './agent.mjs';
-import { remember,safeText,createTask,recoverTasks,sourceDigest,LIMITS } from './harness.mjs';
+import { remember,safeText,safeValue,textRedactor,createTask,recoverTasks,sourceDigest,LIMITS } from './harness.mjs';
 import { storageBridge } from './preview-bridge.mjs';
 import { configureNetwork,modelFetch } from './network.mjs';
 
@@ -116,22 +116,22 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
     if(!previous)remember(project,prompt,config.apiKey);
     const controller=new AbortController();let finish;controller.finished=new Promise(r=>{finish=r;});jobs.set(id,controller);let task;
     try{task=await createTask(store,project,prompt,previous);}catch(e){jobs.delete(id);throw e;}
-    const timeout=setTimeout(()=>controller.abort(new Error('timeout')),LIMITS.milliseconds);
+    const timeout=setTimeout(()=>{if(!controller.publicationStarted)controller.abort(new Error('timeout'));},LIMITS.milliseconds);
     res.status(200).set({'Content-Type':'application/x-ndjson; charset=utf-8','Cache-Control':'no-store'});res.flushHeaders();
-    const redact=s=>safeText(s,config.apiKey);let checkpoint=Promise.resolve();
-    const emit=event=>{if(event.type==='status'){task.phase=redact(event.text).slice(0,500);task.updatedAt=Date.now();task.events.push({text:task.phase,time:task.updatedAt});task.events=task.events.slice(-40);checkpoint=checkpoint.then(()=>store.save(project)).catch(e=>{controller.abort(new Error('checkpoint-failed'));throw e;});checkpoint.catch(()=>{});}if(!res.destroyed)res.write(JSON.stringify(event.type==='done'?event:{...event,text:event.text?redact(event.text):undefined})+'\n');};
+    const redact=s=>safeText(s,config.apiKey),textOutput=textRedactor(config.apiKey);let checkpoint=Promise.resolve();
+    const emit=event=>{if(event.type==='status'){task.phase=redact(event.text).slice(0,500);task.updatedAt=Date.now();task.events.push({text:task.phase,time:task.updatedAt});task.events=task.events.slice(-40);checkpoint=checkpoint.then(()=>store.save(project)).catch(e=>{controller.abort(new Error('checkpoint-failed'));throw e;});checkpoint.catch(()=>{});}if(event.type==='text'){const text=textOutput.push(event.text);if(text&&!res.destroyed)res.write(JSON.stringify({type:'text',text})+'\n');return;}const tail=['done','error'].includes(event.type)?textOutput.flush():'';if(!res.destroyed){if(tail)res.write(JSON.stringify({type:'text',text:tail})+'\n');res.write(JSON.stringify(safeValue(event,config.apiKey))+'\n');}};
     try{
       project.messages.push({role:'user',text:prompt,time:Date.now()});await store.save(project);
-      const done=await agent({store,project,config:{...config},prompt,signal:controller.signal,emit,build,task});
-      await checkpoint;task.state='completed';task.phase=done.verification?.state==='passed'?'功能检查通过':'制作结束，实际功能待验证';task.updatedAt=Date.now();await store.save(done);emit({type:'done',project:store.public(done)});
+      const done=await agent({store,project,config:{...config},prompt,signal:controller.signal,emit,build,task,beforeCommit:async()=>{await checkpoint;controller.signal.throwIfAborted();},onPublish:()=>{controller.signal.throwIfAborted();controller.publicationStarted=true;}});
+      await checkpoint;controller.signal.throwIfAborted();controller.publicationStarted=true;task.state='completed';task.phase=done.verification?.state==='passed'?'功能检查通过':'制作结束，实际功能待验证';task.updatedAt=Date.now();await store.save(done);emit({type:'done',project:store.public(done)});
     }catch(e){await checkpoint.catch(()=>{});const reason=controller.signal.reason?.message;task.state=controller.signal.aborted?(reason==='user-stop'?'stopped':'interrupted'):'failed';task.reason=reason||'error';task.phase=task.state==='stopped'?'用户主动停止；不会自动继续':task.state==='interrupted'?'制作中断，可核对源码后继续':'制作失败，可核对源码后继续';task.updatedAt=Date.now();const message=controller.signal.aborted?task.phase+'，保留上一个可用版本。':redact(e.message);project.messages.push({role:'assistant',text:'本次制作未完成：'+message.slice(0,1800),time:Date.now()});await store.save(project);emit({type:'error',text:message,project:store.public(project)});}
     finally{clearTimeout(timeout);jobs.delete(id);finish();if(!res.destroyed)res.end();}
   }));
-  app.post('/api/projects/:id/stop',(req,res)=>{jobs.get(req.params.id)?.abort(new Error('user-stop'));res.json({ok:true});});
+  app.post('/api/projects/:id/stop',(req,res)=>{const job=jobs.get(req.params.id);if(job?.publicationStarted)return res.status(409).json({error:'版本已开始保存，无法停止；请等待结果。'});job?.abort(new Error('user-stop'));res.json({ok:true});});
   app.post('/api/projects/:id/restore',mutation(async(req,res)=>{
     const id=req.params.id;assertIdle(id);const p=await store.get(id),v=p.versions.find(v=>v.id===req.body.versionId);if(!v)throw new Error('版本不存在。');
     const controller=new AbortController();let finish;controller.finished=new Promise(r=>{finish=r;});jobs.set(id,controller);
-    let draft;try{draft=await store.draft(id,v.files);await build(draft,{signal:controller.signal});p.verification={state:'pending',reason:'版本恢复后需要重新验证功能'};p.memory.changes.push({text:`代码恢复到版本 ${v.revision}；保留当前最新需求`,time:Date.now()});p.messages.push({role:'assistant',text:`已恢复到版本 ${v.revision} 的代码，并保存为新的版本。`,time:Date.now()});await store.commit(p,draft,`恢复版本 ${v.revision}`);res.json(store.public(p));}finally{jobs.delete(id);finish();if(draft)await fs.rm(draft,{recursive:true,force:true}).catch(()=>{});}
+    let draft;try{draft=await store.draft(id,v.files);await build(draft,{signal:controller.signal});p.verification={state:'pending',reason:'版本恢复后需要重新验证功能'};p.memory.changes.push({text:`代码恢复到版本 ${v.revision}；保留当前最新需求`,time:Date.now()});p.messages.push({role:'assistant',text:`已恢复到版本 ${v.revision} 的代码，并保存为新的版本。`,time:Date.now()});await store.commit(p,draft,`恢复版本 ${v.revision}`,{signal:controller.signal,beforePublish:()=>{controller.signal.throwIfAborted();controller.publicationStarted=true;}});res.json(store.public(p));}finally{jobs.delete(id);finish();if(draft)await fs.rm(draft,{recursive:true,force:true}).catch(()=>{});}
   }));
   app.get('/api/projects/:id/export',async(req,res)=>{
     const p=await store.get(req.params.id);if(!p.ready)throw new Error('项目尚未编译成功，暂时无法导出。');
@@ -150,7 +150,7 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
   else{const {createServer}=await import('vite');vite=await createServer({root:APP_ROOT,server:{middlewareMode:true},appType:'custom'});app.use(vite.middlewares);}
   app.use((err,req,res,next)=>{if(res.headersSent)return next(err);const message=err.message||'操作失败。';res.status(400).json({error:message});});
   let server;try{server=await listen(app,port);}catch(e){previewServer.close();await vite?.close();throw e;}
-  return {url:`http://127.0.0.1:${server.address().port}`,previewOrigin,token,store,ready:initialization,close:async()=>{const runningJobs=[...jobs.values()];for(const job of runningJobs)job.abort(new Error('service-close'));await Promise.all(runningJobs.map(job=>job.finished));await vite?.close();server.closeAllConnections();previewServer.closeAllConnections();await Promise.all([new Promise(r=>server.close(r)),new Promise(r=>previewServer.close(r))]);}};
+  return {url:`http://127.0.0.1:${server.address().port}`,previewOrigin,token,store,ready:initialization,close:async()=>{const runningJobs=[...jobs.values()];for(const job of runningJobs)if(!job.publicationStarted)job.abort(new Error('service-close'));await Promise.all(runningJobs.map(job=>job.finished));await vite?.close();server.closeAllConnections();previewServer.closeAllConnections();await Promise.all([new Promise(r=>server.close(r)),new Promise(r=>previewServer.close(r))]);}};
 }
 function listen(app,port){return new Promise((resolve,reject)=>{const server=app.listen(port,'127.0.0.1',()=>resolve(server));server.on('error',reject);});}
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){const studio=await startStudio({port:Number(process.env.STUDIO_PORT||5173),production:process.argv.includes('--production')});console.log(`Sprout Studio: ${studio.url}`);const exit=async()=>{await studio.close();process.exit(0);};process.on('SIGINT',exit);process.on('SIGTERM',exit);}

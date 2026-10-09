@@ -3,13 +3,13 @@ import path from 'node:path';
 import { Type } from 'typebox';
 import { APP_ROOT,readSources,sourcePath,writeSource } from './store.mjs';
 import { buildProject } from './builder.mjs';
-import { memoryContext,LIMITS,safeText,digestSources } from './harness.mjs';
+import { memoryContext,LIMITS,safeText,safeValue,textRedactor,digestSources } from './harness.mjs';
 import { verifyPreview } from './verify.mjs';
 import { modelFetch } from './network.mjs';
 
 const result=text=>({content:[{type:'text',text}],details:{}});
-export async function runAgent({store,project,config,prompt,signal,emit,build=buildProject,verify=verifyPreview,task}) {
-  let draft,runtime,session,abort,unsubscribe;
+export async function runAgent({store,project,config,prompt,signal,emit,build=buildProject,verify=verifyPreview,task,onPublish,beforeCommit}) {
+  let draft,runtime,session,abort,unsubscribe;const textOutput=textRedactor(config.apiKey);const emitText=text=>{if(text)emit({type:'text',text});};
   try{
   const {createAgentSession,createExtensionRuntime,ModelRuntime,SessionManager,SettingsManager}=await import('@earendil-works/pi-coding-agent');
   draft=await store.draft(project.id);
@@ -27,7 +27,7 @@ export async function runAgent({store,project,config,prompt,signal,emit,build=bu
   };
   let writes=0,builtAt=-1,buildAttempts=0,toolCalls=0,verifiedAt=-1,verification=null,verifyAttempts=0;
   const tools=[
-    {name:'verify_preview',label:'检查实际功能',description:'真实浏览器运行已编译应用，执行点击、填写、文本包含或数量断言。selector 是 CSS 选择器。编辑后必须重新检查。编译不等于功能通过。',parameters:Type.Object({steps:Type.Array(Type.Object({action:Type.Union(['click','fill','text','count','reload'].map(x=>Type.Literal(x))),selector:Type.Optional(Type.String()),value:Type.Optional(Type.Union([Type.String(),Type.Number()]))}),{minItems:1,maxItems:20})}),async execute(_id,args){signal.throwIfAborted();if(builtAt!==writes)return {...result('请先编译当前源码。'),isError:true};if(++verifyAttempts>3)throw new Error('功能修复达到三轮上限。');verification=await verify(draft,args.steps,{signal});emit({type:'status',text:verification.state==='passed'?'所列实际功能检查通过':'功能检查失败，等待修复：'+verification.error});verifiedAt=verification.state==='passed'?writes:-1;return {...result(JSON.stringify(verification)),isError:verification.state!=='passed'};}},
+    {name:'verify_preview',label:'检查实际功能',description:'真实浏览器运行已编译应用，执行点击、填写、文本包含或数量断言。selector 是 CSS 选择器。编辑后必须重新检查。编译不等于功能通过。',parameters:Type.Object({steps:Type.Array(Type.Object({action:Type.Union(['click','fill','text','count','reload'].map(x=>Type.Literal(x))),selector:Type.Optional(Type.String()),value:Type.Optional(Type.Union([Type.String(),Type.Number()]))}),{minItems:1,maxItems:20})}),async execute(_id,args){signal.throwIfAborted();if(builtAt!==writes)return {...result('请先编译当前源码。'),isError:true};if(++verifyAttempts>3)throw new Error('功能修复达到三轮上限。');verification=safeValue(await verify(draft,args.steps,{signal}),config.apiKey);emit({type:'status',text:verification.state==='passed'?'所列实际功能检查通过':'功能检查失败，等待修复：'+verification.error});verifiedAt=verification.state==='passed'?writes:-1;return {...result(JSON.stringify(verification)),isError:verification.state!=='passed'};}},
     {name:'list_files',label:'查看项目',description:'列出当前小程序的可编辑源码文件。',parameters:Type.Object({}),async execute(){signal.throwIfAborted();return result(Object.keys(await readSources(draft)).join('\n'));}},
     {name:'read_file',label:'读取源码',description:'读取一个项目源码文件。',parameters:Type.Object({path:Type.String()}),async execute(_id,args){signal.throwIfAborted();return result(safeText(await fs.readFile(path.join(draft,sourcePath(args.path)),'utf8'),config.apiKey));}},
     {name:'write_file',label:'制作页面',description:'写入完整的页面、组件或样式文件。只允许 src/pages/index/index.jsx、index.css、src/components/*.jsx/css 和 src/app.css。',parameters:Type.Object({path:Type.String(),content:Type.String()}),async execute(_id,args){signal.throwIfAborted();await writeSource(draft,args.path,safeText(args.content,config.apiKey));writes++;return result(`已写入 ${args.path}。请编译检查。`);}},
@@ -35,7 +35,7 @@ export async function runAgent({store,project,config,prompt,signal,emit,build=bu
   ];
   const sessionDir=path.join(store.dir(project.id),'sessions');await fs.mkdir(sessionDir,{recursive:true});
   const sessionManager=SessionManager.create(draft,sessionDir);
-  const sanitize=value=>typeof value==='string'?safeText(value,config.apiKey):Array.isArray(value)?value.map(sanitize):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([k,v])=>[k,sanitize(v)])):value;
+  const sanitize=value=>safeValue(value,config.apiKey);
   const appendMessage=sessionManager.appendMessage.bind(sessionManager);sessionManager.appendMessage=message=>appendMessage(sanitize(message));const appendCompaction=sessionManager.appendCompaction.bind(sessionManager);sessionManager.appendCompaction=(...args)=>appendCompaction(...args.map(sanitize));
   sessionManager.appendCustomEntry('sprout-task',{taskId:task?.id,sourceDigest:task?.sourceDigest,baseRevision:project.revision,resumedFrom:task?.resumedFrom});
   if(task){task.sessionFile=path.basename(sessionManager.getSessionFile());await store.save(project);}
@@ -50,7 +50,7 @@ export async function runAgent({store,project,config,prompt,signal,emit,build=bu
   abort=()=>{session.abort().catch(()=>{});};signal.addEventListener('abort',abort,{once:true});
   let lastText='',lastStop='';
   unsubscribe=session.subscribe(event=>{
-    if(event.type==='message_update'&&event.assistantMessageEvent.type==='text_delta')emit({type:'text',text:event.assistantMessageEvent.delta});
+    if(event.type==='message_update'&&event.assistantMessageEvent.type==='text_delta')emitText(textOutput.push(event.assistantMessageEvent.delta));
     if(event.type==='tool_execution_start'){
       emit({type:'status',text:{list_files:'正在查看项目结构',read_file:'正在阅读现有页面',write_file:'正在制作页面与交互',build_preview:'正在检查并编译两个平台',verify_preview:'正在检查实际交互与业务断言'}[event.toolName]||'正在处理'});
       if(task){task.toolCalls=toolCalls+1;task.buildAttempts=buildAttempts;task.verifyAttempts=verifyAttempts;}if(++toolCalls>40)abort();
@@ -74,9 +74,9 @@ export async function runAgent({store,project,config,prompt,signal,emit,build=bu
     if(!writes) { if(verification){project.verification={...verification,revision:project.revision,sourceDigest:digestSources(await readSources(draft))};if(verification.state==='failed')throw new Error('功能检查未通过：'+verification.error);}project.messages.push({role:'assistant',text:lastText,time:Date.now()});await store.save(project);return project; }
     if(builtAt!==writes){if(++buildAttempts>3)throw new Error('编译修复达到三轮上限。');emit({type:'status',text:'正在进行最终双端编译验证…'});await build(draft,{signal,onLog:text=>emit({type:'status',text})});}
     signal.throwIfAborted();
-    project.verification=verification&&verifiedAt===writes?{...verification,revision:project.revision+1,sourceDigest:digestSources(await readSources(draft))}:{state:'pending',reason:'当前源码尚未通过实际功能检查'};
+    const checked=verification&&verifiedAt===writes?{...verification,revision:project.revision+1,sourceDigest:digestSources(await readSources(draft))}:{state:'pending',reason:'当前源码尚未通过实际功能检查'};
     if(verification?.state==='failed'&&verifiedAt!==writes)throw new Error('功能检查未通过：'+verification.error);
-    project.messages.push({role:'assistant',text:(verifiedAt===writes?lastText:lastText+'\n实际功能待验证；双端编译已通过。')||'修改已完成，H5 和微信小程序均已编译通过。你可以在右侧试用新版本。',time:Date.now()});
-    await store.commit(project,draft,prompt);return project;
-  }finally{unsubscribe?.();if(abort)signal.removeEventListener('abort',abort);session?.dispose();if(runtime)await runtime.removeRuntimeApiKey('sprout-model').catch(()=>{});if(draft)await fs.rm(draft,{recursive:true,force:true}).catch(()=>{});}
+    const candidate={...project,verification:checked,messages:[...project.messages,{role:'assistant',text:(verifiedAt===writes?lastText:lastText+'\n实际功能待验证；双端编译已通过。')||'修改已完成，H5 和微信小程序均已编译通过。你可以在右侧试用新版本。',time:Date.now()}]};
+    await beforeCommit?.();signal.throwIfAborted();await store.commit(candidate,draft,prompt,{signal,beforePublish:onPublish});Object.assign(project,candidate);return project;
+  }finally{emitText(textOutput.flush());unsubscribe?.();if(abort)signal.removeEventListener('abort',abort);session?.dispose();if(runtime)await runtime.removeRuntimeApiKey('sprout-model').catch(()=>{});if(draft)await fs.rm(draft,{recursive:true,force:true}).catch(()=>{});}
 }

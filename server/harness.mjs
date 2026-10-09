@@ -4,6 +4,9 @@ import { createHash,randomUUID } from 'node:crypto';
 import { atomicJson,readSources } from './store.mjs';
 export const LIMITS={attempts:3,tools:40,builds:3,milliseconds:600000,memoryChars:48000};
 export function safeText(value,key=''){let text=String(value||'');if(key)text=text.split(key).join('[密钥已隐藏]');return text.replace(/\b(?:sk-[A-Za-z0-9_-]{8,}|Bearer\s+\S+)/gi,'[密钥已隐藏]');}
+export function safeValue(value,key=''){return typeof value==='string'?safeText(value,key):Array.isArray(value)?value.map(x=>safeValue(x,key)):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([name,item])=>[safeText(name,key),safeValue(item,key)])):value;}
+// Retain only a possible secret prefix; no partial delta can complete a leaked key.
+export function textRedactor(key=''){let pending='';return {push(chunk){pending=safeText(pending+String(chunk||''),key);let keep=0;for(let n=1;n<key.length;n++)if(pending.endsWith(key.slice(0,n)))keep=n;const text=pending.slice(0,pending.length-keep);pending=pending.slice(pending.length-keep);return text;},flush(){const text=pending&&key.startsWith(pending)?'[密钥已隐藏]':safeText(pending,key);pending='';return text;}};}
 export function normalizeProject(p){p.memory??={goal:p.title,constraints:'',changes:(p.messages||[]).filter(m=>m.role==='user').map(m=>({text:safeText(m.text),time:m.time})),updatedAt:Date.now()};p.tasks??=[];p.runtimeErrors??=[];return p;}
 export function remember(p,prompt,key){normalizeProject(p);const text=safeText(prompt,key);if(JSON.stringify(p.memory).length+text.length>LIMITS.memoryChars)throw new Error('需求记录已满，请先在项目需求中整理后继续。');p.memory.changes.push({text,time:Date.now()});p.memory.updatedAt=Date.now();}
 export function memoryContext(p){normalizeProject(p);if(JSON.stringify(p.memory).length>LIMITS.memoryChars)throw new Error('历史需求超过上下文容量，请在项目需求中整理；原始对话与记录仍保留。');return JSON.stringify(p.memory);}

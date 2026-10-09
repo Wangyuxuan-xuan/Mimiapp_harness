@@ -1,0 +1,16 @@
+node_modules/
+.npm-cache/
+.electron-cache/
+dist/
+release/
+.studio/
+.test-data/
+.test-data-*/
+*.log
+release-qr-fix/
+.package-staging/
+.test-qr-*/
+test-results/
+.env
+.env.*
+!.env.example

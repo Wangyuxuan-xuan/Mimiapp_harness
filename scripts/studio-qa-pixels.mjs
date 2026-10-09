@@ -1,0 +1,20 @@
+// Evidence analysis only. Never launches Studio, connects to a service or calls a model.
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {createHash} from 'node:crypto';
+import {PNG} from 'pngjs';
+import jsQR from 'jsqr';
+let raw='';for await(const part of process.stdin)raw+=part;
+const input=JSON.parse(raw);
+if(!path.isAbsolute(input.image)||!path.isAbsolute(input.output))throw Error('Absolute evidence paths required');
+if(!input.version||typeof input.expected!=='string'||!input.expected)throw Error('Version and exact expected input required');
+const bytes=await fs.readFile(input.image),whole=PNG.sync.read(bytes);
+const rect=input.physicalBox||{x:0,y:0,width:whole.width,height:whole.height};
+const left=Math.floor(rect.x),top=Math.floor(rect.y),right=Math.ceil(rect.x+rect.width),bottom=Math.ceil(rect.y+rect.height);
+if(left<0||top<0||right>whole.width||bottom>whole.height||right<=left||bottom<=top)throw Error('Evidence region outside captured viewport');
+const crop=new PNG({width:right-left,height:bottom-top});
+PNG.bitblt(whole,crop,left,top,crop.width,crop.height,0,0);
+const decoded=jsQR(new Uint8ClampedArray(crop.data),crop.width,crop.height,{inversionAttempts:'attemptBoth'});
+const result={at:new Date().toISOString(),version:input.version,image:input.image,imageSHA256:createHash('sha256').update(bytes).digest('hex'),captureSize:{width:whole.width,height:whole.height},logicalSize:input.logicalSize||null,physicalBox:rect,scale:input.scale??null,expected:input.expected,decoded:decoded?.data??null,qrVersion:decoded?.version??null,passed:decoded?.data===input.expected,scope:'Decode actual saved screenshot pixels; geometry provenance supplied by separate UI observation, no resizing or image regeneration'};
+await fs.writeFile(input.output,JSON.stringify(result,null,2),{flag:'wx'});
+console.log(JSON.stringify(result));if(!result.passed)process.exitCode=1;

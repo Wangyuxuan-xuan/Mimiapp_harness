@@ -15,3 +15,9 @@
 开发证据：`test-results/input-value-engineering-final.tap` 4/4，真实隔离 Edge：静态错误引用/UTF16/缺证据；异步 Taro textarea 回填与空清除；no-op/错误回填/初值已等/隐私/目标类型；实际 viewport QR 解码与合法自动清空、错误旧码；取消。随后仅新增候选隐私与页面错误/选择器分类，`test-results/input-value-privacy-classification.tap` 1/1。后者命令的附带依赖路径查询因树内无 node_modules 而失败，测试本身已完成 1/1；随后从真实 D:/app/node_modules 成功核版本。首四项在最终候选隐私小补丁前完成；后者专门覆盖该补丁。新增静态基线组合与同长度异计划证据拒绝另有定向日志。未重复旧 QR/native/Taro 大套，未调用商业模型。
 
 局限：本原语不会自动覆盖全部自然需求，具体按钮语义与需求清单仍需独立审查；无关后台异步写入不能据此数学证明来源。旧码恰好与期待相同只证明点击后实际码内容正确，不证明本次重生成。跨调用组合、通用必验需求门不在本包。继续负责人 B；冻结后由独立工程 Lead 与 QA 核精确 SHA。
+
+## 截止时间复审补丁
+
+6e12e14 冻结后工程 Lead 发现类型和可见性 evaluate 仍使用默认等待，现统一由 valueOptions 校验 signal/剩余期限；所有 Locator.evaluate 与 inputValue 显式传剩余 timeout 和 signal，isVisible 为公开即时查询，其前先核期限。宿主/子输入解析前也核剩余期限。只有原生 locator 的短暂 detached 错误在原期限内重新解析，typed 业务/计划/运行错误与取消不吞；浏览器关闭仍优先 external。原生等待到期仅返回不含输入内容的截止提示。
+
+仅定向 `node --test --test-name-pattern "DOM replacement" tests/input-value-engineering.test.mjs`，`test-results/input-value-deadline-followup.tap` 1/1。实际 Edge 正例点击后移除旧 input、120ms 后重建同 selector，因果值通过。截止反例通过测试包装公开 Locator.evaluate，在真实浏览器的第一次求值耗时3秒后移除DOM，随后真实原生求值只获得不足1.5秒剩余期限；所有观察到的 evaluate timeout 均为正且不超过4秒，整次过期检查含启动关闭不足6秒，返回 business 截止提示。该测试没有替换 verifier 的执行结果或证据，也没有新增产品 seam。旧4/4及隐私1/1有效证据复用，独立 QA 等待新冻结SHA。

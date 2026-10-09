@@ -1,5 +1,6 @@
 import test from 'node:test';
 import {createHash} from 'node:crypto';
+import {chromium} from 'playwright-core';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -46,4 +47,13 @@ test('ambiguous input hosts redact textarea content and non-selector faults reta
  const privacy=await check('<div class="host"><textarea>PRIVATE_TEXTAREA_A</textarea></div><div class="host"><textarea>PRIVATE_TEXTAREA_B</textarea></div>',[step('value','.host','')]);assert.equal(privacy.planKind,'selector-ambiguous');assert.doesNotMatch(JSON.stringify(privacy),/PRIVATE_TEXTAREA_A|PRIVATE_TEXTAREA_B/);
  const runtime=await check('<input id="editor" value="old"><button id="history" onclick="throw new Error(\'fixture-script-failure\')"></button>',causal());assert.equal(runtime.failureType,'runtime');
  const syntax=await check('<input>',[step('value','[broken','')]);assert.equal(syntax.planKind,'selector-syntax');
+});
+test('DOM replacement is re-resolved and all waiting value APIs share the original deadline',async()=>{
+ const replacement=await check(`<input id="editor" value="old"><button id="history" onclick="document.querySelector('input').remove();setTimeout(()=>{const input=document.createElement('input');input.id='editor';input.value='历史中文';document.body.append(input)},120)"></button>`,causal());assert.equal(replacement.state,'passed');validateVerificationEvidence(replacement,causal());
+ const launch=chromium.launch,timeouts=[];let injected=false;
+ try{
+  chromium.launch=async(...args)=>{const browser=await launch.apply(chromium,args),newPage=browser.newPage.bind(browser);browser.newPage=async(...args)=>{const page=await newPage(...args),locator=page.locator.bind(page);page.locator=(...args)=>{const loc=locator(...args),evaluate=loc.evaluate.bind(loc);loc.evaluate=async(fn,arg,options)=>{timeouts.push(options?.timeout);if(!injected&&args[0]==='#editor'){injected=true;return evaluate(async el=>{await new Promise(r=>setTimeout(r,3000));el.remove();return true;},undefined,options);}return evaluate(fn,arg,options);};return loc;};return page;};return browser;};
+  const started=Date.now(),expired=await check('<input id="editor" value="old">',[step('value','#editor','expected')]);
+  assert.equal(expired.failureType,'business');assert.match(expired.error,/截止时间/);assert.ok(Date.now()-started<6000,'a later evaluate must not restart a four-second wait');assert.ok(timeouts.length>=2);assert.ok(timeouts.every(t=>Number.isFinite(t)&&t>0&&t<=4000));assert.ok(timeouts[1]<1500);
+ }finally{chromium.launch=launch;}
 });

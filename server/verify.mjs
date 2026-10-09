@@ -106,19 +106,29 @@ async function fillEditable(loc,value,{page,s,step,signal}){
  await fill(editable);
 }
 
+function valueOptions(deadline,signal){signal?.throwIfAborted();const timeout=deadline-Date.now();if(timeout<=0)throw Object.assign(new Error('输入值只读检查已到截止时间。'),{code:'value-deadline',failureType:'business'});return {timeout,signal};}
 // Public inputValue only: diagnostic output never contains actual editor text.
 async function valueTarget(page,s,step,signal,deadline){
- const host=await uniqueTarget(page,s,step,signal,undefined,deadline);let loc=host;
- const direct=await host.evaluate(el=>el.matches('input,textarea'));
- if(!direct){try{loc=await uniqueTarget(page,s,step,signal,host.locator(':is(input,textarea)'),deadline);}catch(e){if(e.failureType==='plan')Object.assign(e,{resolvedSelector:':is(input,textarea)',targetContext:'value-child'});throw e;}}
- const supported=await loc.evaluate(el=>el.tagName==='TEXTAREA'||(el.tagName==='INPUT'&&!['password','file','hidden','checkbox','radio','button','submit','reset','image'].includes(el.type)));
- const visible=async target=>await target.isVisible()&&await target.evaluate(el=>{for(let n=el;n;n=n.parentElement){const st=getComputedStyle(n);if(Number(st.opacity)===0||st.visibility==='hidden'||st.display==='none')return false;}return true;});
+ valueOptions(deadline,signal);const host=await uniqueTarget(page,s,step,signal,undefined,deadline);let loc=host;
+ const direct=await host.evaluate(el=>el.matches('input,textarea'),undefined,valueOptions(deadline,signal));
+ if(!direct){try{valueOptions(deadline,signal);loc=await uniqueTarget(page,s,step,signal,host.locator(':is(input,textarea)'),deadline);}catch(e){if(e.failureType==='plan')Object.assign(e,{resolvedSelector:':is(input,textarea)',targetContext:'value-child'});throw e;}}
+ const supported=await loc.evaluate(el=>el.tagName==='TEXTAREA'||(el.tagName==='INPUT'&&!['password','file','hidden','checkbox','radio','button','submit','reset','image'].includes(el.type)),undefined,valueOptions(deadline,signal));
+ const visible=async target=>{valueOptions(deadline,signal);return await target.isVisible()&&await target.evaluate(el=>{for(let n=el;n;n=n.parentElement){const st=getComputedStyle(n);if(Number(st.opacity)===0||st.visibility==='hidden'||st.display==='none')return false;}return true;},undefined,valueOptions(deadline,signal));};
  if(!supported||!await visible(host)||!await visible(loc))throw Object.assign(new Error('value需要可见input/textarea或宿主内唯一可见输入；不支持此目标类型。'),{failureType:'plan',planKind:'value-target',step,action:s.action,selector:s.selector});
  return loc;
 }
 async function readValue(page,s,step,signal,deadline){
- signal?.throwIfAborted();const loc=await valueTarget(page,s,step,signal,deadline);
- return loc.inputValue({timeout:Math.max(1,deadline-Date.now())});
+ for(;;){
+  try{valueOptions(deadline,signal);const loc=await valueTarget(page,s,step,signal,deadline);return await loc.inputValue(valueOptions(deadline,signal));}
+  catch(e){
+   signal?.throwIfAborted();if(page.isClosed()||!page.context().browser()?.isConnected())throw e;
+   if(e.name==='TimeoutError'&&Date.now()>=deadline)throw Object.assign(new Error('输入值只读检查已到截止时间。'),{code:'value-deadline',failureType:'business'});
+   // Only a native locator detachment can be retried; application errors and
+   // cancellation are not converted to value mismatches.
+   if(e.failureType||!/Element (?:is not attached to the DOM|was detached)|element is not attached to the DOM/.test(e.message||''))throw e;
+   const {timeout}=valueOptions(deadline,signal);await page.waitForTimeout(Math.min(50,timeout));
+  }
+ }
 }
 async function assertValue(page,s,step,signal,before){
  const deadline=Date.now()+4000;let actual;

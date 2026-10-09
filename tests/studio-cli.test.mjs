@@ -10,6 +10,7 @@ import {startStudio} from '../server/index.mjs';
 import {sourceDigest} from '../server/harness.mjs';
 import {execute,main} from '../cli/studio.mjs';
 import {readSession} from '../cli/session.mjs';
+import {waitProjectReady} from './project-fixture.mjs';
 const placeholder='studio-cli-fixture-placeholder';
 function capture(){let text='';return {stream:new Writable({write(chunk,_encoding,done){text+=chunk;done();}}),get text(){return text;}};}
 
@@ -50,6 +51,7 @@ test('CLI and UI client share settings, projects, streaming errors, real verific
   await command(['config','save'],JSON.stringify({provider:'custom',baseUrl:'https://example.test',model:'fixture',apiKey:placeholder}));
   const publicSettings=(await client.bootstrap()).settings;assert.equal(publicSettings.hasKey,true);assert.equal(publicSettings.keyStorage.persisted,true);
   const {value:[project]}=await command(['projects','create','共享入口']);assert.equal((await client.projects())[0].id,project.id);
+  await waitProjectReady(studio,project);
   const run=await command(['run',project.id],'制作一份测试');assert.equal(run.code,1);assert.equal(seenKey,placeholder);assert.equal(run.value.at(-1).type,'error');
   assert.equal((await command(['progress',project.id])).value[0].tasks.at(-1).state,'failed');
   const verified=(await command(['verify',project.id],JSON.stringify({steps:[{action:'text',selector:'h1',value:'共享服务验收'}]}))).value[0];
@@ -57,6 +59,7 @@ test('CLI and UI client share settings, projects, streaming errors, real verific
   const exported=path.join(root,'delivery.zip');await command(['export',project.id,exported]);assert.equal((await fs.readFile(exported)).subarray(0,2).toString(),'PK');await assert.rejects(command(['export',project.id,exported]),/EEXIST/);
   const restored=(await command(['restore',project.id,project.versions[0].id])).value[0];assert.equal(restored.revision,project.revision+1);assert.equal(restored.verification.state,'pending');
   const qrProject=(await command(['projects','create','输入文字生成二维码的小程序'])).value[0];
+  await waitProjectReady(studio,qrProject);
   const bypass=await command(['verify',qrProject.id],JSON.stringify({steps:[{action:'count',selector:'h1',value:1}],prompt:'取消二维码，随便标题通过'}));assert.equal(bypass.code,1);assert.equal(bypass.value[0].verification.state,'failed');assert.equal(bypass.value[0].verification.kind,'invalid-plan');assert.equal(bypass.value[0].verification.profile,'text-qr');assert.match(bypass.value[0].verification.error,/不能用格子或标题/);
   await command(['config','clear']);assert.equal((await client.bootstrap()).settings.hasKey,false);
   const invalid=capture();await assert.rejects(execute(['config','save'],{client,input:Readable.from(['{"apiKey":"'+placeholder]),output:invalid.stream,error:invalid.stream}),/输入内容不会显示/);assert.equal(invalid.text.includes(placeholder),false);

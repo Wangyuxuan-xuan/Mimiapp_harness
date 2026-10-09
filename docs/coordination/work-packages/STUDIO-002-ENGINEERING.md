@@ -2,6 +2,41 @@
 
 2026-10-09（北京时间）。工程负责人聊天：01a11fb4-ff38-7723-8711-298ab2608c9c。B 产品范围、集成和最终核验负责人：01a11ebf-e71e-71c0-97a1-86bcff83f324；A 独占 TASKS。本文件由工程负责人唯一维护，不代替总工作包或独立 QA 结论。
 
+## r3 桌面交付准备（仅安排，未放行执行）
+
+B 已要求准备下一包复用安排，明确暂不打包、构建或锁 HEAD。输入断言已独立验收并集成；导航冻结 `25d66c1` 工程审查通过、独立 QA 尚在执行。B 待独立结果后统一集成并补 verification modal 的 value/qr 中文标签，提交最终完整 main SHA，再单独交唯一打包许可。下方 r2 的“当前”描述为该阶段历史结论，最新任务状态以 TASKS 与 B 交接为准。
+
+- 复用已有且已结束的唯一代理 `/root/studio2_packaging`。已实际核该代理仍可复用；本次未唤醒或续派，不称后台正在打包。收到明确许可和精确 HEAD 后才 followup，不新增重复代理。
+- 预定新 stage：`D:/app/.package-staging-studio-20261009-r3`；output：`D:/app/release-harness-20261009-studio2-r3`。本次只读核两目录均不存在，执行前必须重核；不得覆盖已有目录或改名绕过失败。
+- 复用 `scripts/package-desktop.mjs` 及现有本地 Electron/builder/生产依赖流程。该脚本内部做一次 Vite 构建；不提前或额外 root build，不触发商业模型、native 检查、Taro 用户项目编译或用户项目操作。
+- 放行后拟使用命令：`node scripts/package-desktop.mjs --stage D:/app/.package-staging-studio-20261009-r3 --output D:/app/release-harness-20261009-studio2-r3 --source-commit <B提供的40位SHA>`。这是命令模板，本轮未执行。按已有正常权限审批路径运行，环境失败保留原日志与实际目录状态，再交 B 定向处理；不自行清理或反复换目录。
+- 执行前核实际 main HEAD 与许可 SHA 相同、产品输入无未提交改动，协调打包窗口冻结；HEAD 锁现在尚未生效。结束核 HEAD/baseCommit/finalizerSourceCommit 一致，不使用硬编码历史 productBase 识别版本。
+- 核查范围复用有效流程，但资源数量按新实际清单枚举，不能机械沿用 r2 的43项；本次新增 server 之外的前端 hook/状态模块会进入新 dist。核包内固定资源、生产化 package 转换、stage 与包内 dist 所有实际文件摘要，生成新 build-manifest 与 packaging-verification，记录 manifest 摘要。Electron 壳 exe 相同不代表产品相同。
+- 保留新 stage/dist 供 QA 精确摘要核对后复用，避免为同份资源重复构建。不得把旧 r2 dist 当 r3。打包通过仅表示产物生成及资源对应，正常启用与运行验收由 B 协调安全空闲现场。
+- r2/current、用户 hi 项目、原窗口、配置、Key、旧服务均不操作；准备与打包本身不包含退出或重启用户当前应用。
+
+本轮已完成脚本/历史证据/代理状态与目录不存在的只读核对，仅更新本工程记录。继续负责人 B；工程等待最终精确 HEAD 和明确打包许可，无实际构建、打包或 HEAD 锁。
+
+### r3 正式许可与执行
+
+B 后续明确放行 main `58458dcc29f82a8423e4aa64e6e1d3da298b7d54`，独立导航验收及 input 源码已集成，main 仅在导航候选之外补 value/qr 中文标签。工程实际核 HEAD 相同，tracked 仅 TASKS 与本工程文档变化，r3 stage/output 均不存在。已 followup 复用 `/root/studio2_packaging`，从正式启动至 manifest 完成锁该 HEAD，A/B 已确认不 Git/改产品；文档可写但不提交。
+
+代理正常 require_escalated 审批通过，唯一打包命令 session22194 实际运行；内部 Vite1583模块/6.48秒通过，stage/dist 已产生，桌面 builder/依赖修复与最终资源清单当时仍待。此为进行中事件，不是打包或运行验收通过。未启动正式 UI/模型、未动 r2/current/用户 hi。
+
+### r3 目录包与资源核对完成
+
+唯一 session22194 已实际 exit0，Electron38.8.6/builder26.15.3，依赖修复1113项。产物 `D:/app/release-harness-20261009-studio2-r3/win-unpacked/Sprout Studio.exe`，使用须保留完整目录；清单及代理核查为同 output 的 `build-manifest.json`、`packaging-verification.json`，后者 passed=true。代理已结束，不称仍后台执行。
+
+工程实际读取清单/核查并独立重算：HEAD/baseCommit/finalizerSourceCommit 均为 `58458dcc29f82a8423e4aa64e6e1d3da298b7d54`；清单中全部固定资源包内摘要无不符，代理实际枚举43项（electron3/cli2/server10/templates26/skill1/package1），stage/包文件集合与生产化 package 均核对通过。源码与 Git 的正常 LF/CRLF差异不称原始字节相同。新前端 hook/状态函数进入 dist，不作为额外固定源码资源计数。
+
+- manifest SHA256：`aafc694873c9bd6b507b3bc660012ef366afea9c2660484fa54287f22eb8ba34`。
+- exe SHA256：`62c62d170a95aa4a3eb3df05f0d56a3654ab4344f7452e21dea1334afed7100f`；与旧 Electron 壳相同，版本须看资源清单。
+- stage/dist 保留在 `D:/app/.package-staging-studio-20261009-r3/dist`。工程独立重核全部3项与包内一致：index.html `a5cdf49f3ef913a6d9eb8d245461d6b536965e8b294a4f6941f80691817bc16c`；assets/index-ad275d6f.js `285f2e24767ab5830bad24240ce36fcf406753d2d03414413554523ab224963a`；assets/index-4178fc67.css `4178fc67a20093a8426b935a30da7212f2ff4168761ca689a62367366270d057`。
+
+已向 B 正式解除打包 HEAD 锁。author缺失/asar禁用/依赖解析/按配置跳过签名等提示保留在核查记录，不因此改源码或重包。本次没有额外 root build、UI、native/模型调用、Taro用户项目编译，未改 r2/current/hi/Key/旧服务。
+
+状态：包已生成且资源对应已核；正常启用、配置复用及实际新包运行验收待 B 协调安全空闲现场与独立 QA。继续负责人 B；工程只交包与证据，不把目录包成功称用户已升级。后续 QA 可核摘要后复用本 stage/dist，不复用旧r2 dist、不重复构建。自有工程记录未 Git 提交，供 B 显式收录。
+
 ## 当前工程结论与恢复入口（2026-10-09）
 
 B已授权本轮仅更新本文件和 `docs/studio-regression.md`，不自行Git提交。产品冻结/已上传基线为 `dbe7a6bc35861315f879cf4b3d2fe7b8809a2cec`；连续制作修复树 `D:/app/.worktrees/studio-002-repair`、`codex/studio-002-continuous` 冻结于 `4e43676b9cc03f8210e2d27936c88aa9d74dcb53`。fe4分层预算试验保留历史，未单独合入；用户后续明确取消正常任务固定工具/构建/验证/接续/恢复次数及整任务时限。计数仅作使用记录，不以新任意阈值代替完成。

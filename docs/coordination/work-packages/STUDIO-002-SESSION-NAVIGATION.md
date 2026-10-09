@@ -1,6 +1,6 @@
 # 制作期间切换项目与预览状态
 
-- 日期：2026-10-09；状态：实现进行中，未验收。
+- 日期：2026-10-09；状态：源码与隔离业务轨迹已验收，r3包已生成并核资源；正常原生启动/安全启用待现场，性能分段待测。
 - 授权：用户在B聊天直接报告制作羽毛球计分器时无法切换会话/新建，预览准备中断文案矛盾及准备慢；AGENTS持续改进授权。A已确认导航和状态为当前首优先，无需再次等待批准。
 - B唯一负责人：小芽项目负责人，01a11ebf-e71e-71c0-97a1-86bcff83f324。A仅维护TASKS。
 - 唯一产品writer：B子代理 /root/studio_preview；工作树 D:/app/.worktrees/studio-002-session-navigation；分支 codex/studio-002-session-navigation；基线1e86ca1。独立QA待冻结后由QA Lead安排，不能将开发测试称独立验收。
@@ -42,3 +42,25 @@ src/main.jsx全局busy禁用新建和项目按钮；updateProject在SSE done/err
 独立QA实际10业务轨迹通过：首完整运行9有效通过、1因测试冻结时钟导致toast永不消失挡住发送而失败；保留原失败，改用真实Enter后只重测该1组5095ms通过（父+子pass2/skip9），其余9不重跑。不得写成完整套件单次全绿。覆盖真实JSON消费后的迟到files/runtime/poll、双项目/新建/草稿、停止请求和响应分别晚到、HTTP拒绝/网络失败保原草稿及后续编辑、无task同revision失败与真实取消初始化终态、首版未ready与旧版可交互。使用隔离Edge、注入Agent、动态HTML，非商业模型/Taro或正常Electron窗口。
 
 下一步B统一集成导航与已验收input源码、补检查弹窗value/qr两项中文标签这一低风险集成项，保存回归/报告，再给工程Lead最终main SHA只打包一次独立r3。旧r2/current/hi继续保护，新包资源核验后再安排安全启用；不得宣称当前r2已修。性能分段仍待测，原二维码B亲验后续刷新/回填/清理尚待安全空闲现场。
+
+## r3交付与恢复
+
+源码集成a48da30，QA/复审与低风险标签集成58458dcc29f82a8423e4aa64e6e1d3da298b7d54已push。B核7文件Git blob与25d66冻结一致，main.jsx只增value/qr两项中文标签；个别checkout换行LF/CRLF使文件原始摘要不同，规范化换行后源内容核对一致，不冒称7项全字节相同。B实际主树preview-state/client4/4通过。独立QA报告仅去除原TAP一行尾空格供Git格式检查，原错误/结论不变。
+
+工程Lead复用唯一/root/studio2_packaging一次打包，脚本内部一次Vite，独立输出 `D:/app/release-harness-20261009-studio2-r3/win-unpacked/Sprout Studio.exe`，须保留整个目录。正常r2/current/hi/配置/历史服务未动。B已独立运行ignored核查脚本：HEAD/base/finalizer均58458dcc；main文件与stage、stage与包内43固定资源、全部3dist字节一致，生产package删除build/devDependencies/scripts后的结构逐项一致；没有仅凭相同Electron壳摘要断言产品版本。
+
+证据 `test-results/studio-002-b-r3-package-manifest.json` passed=true；构建manifest SHA256 `aafc694873c9bd6b507b3bc660012ef366afea9c2660484fa54287f22eb8ba34`。包内CLI help实际exit0，只加载客户端，不连接服务或启动原生窗口，不称正常native启动通过。工程已实际exit0、独立固定/全部dist/生产package核通过，依赖修复1113、Vite1583模块6.48秒；唯一pack代理completed，HEAD锁已解除。未再构建或改产品。
+
+继续负责人B，下一步在安全空闲现场协调正常r3入口/公开配置复用及原二维码亲验余项；不得停止用户正在制作的任务来做验收。用户可继续当前窗口，运行包仍旧r2，不能说其已升级。真实准备和首次制作分段耗时仍待测，后续按本包测量点安排，当前没有优化速度的完成结论。
+
+最新安全接续：B实际正常审批只读已知r2 readSession（拒绝启动/回退），13:11UTC公开任务元数据runningCount=0，用户hi项目070372d0-3528-4897-9d67-234664e77469已自然completed/revision4/ready=true。默认sandbox无法取得session的失败保留，不读取Key。B已给QA Lead条件升级许可：先新鲜UI/任务核无未发草稿/未保存modal/新running，才正常退出准确r2并开r3，核公开配置和项目版本状态保全；若用户又在输入/制作则暂停不强关。唯一native操作者QA Lead，结束交B完成原二维码亲验余项；尚无正常r3启动结论。
+
+## 最新实际交付与用户停止桌面操作
+
+以上“仍运行r2/尚无r3启动结论”为升级前记录。独立QA已完成正常安全升级：r3实际PID16940、窗口77992166、API59589、预览59588，准确exe路径；复用公开hasKey/encrypted/available/persisted，无再次输入或读取Key。6项目版本、任务状态、公开摘要和预览存储摘要前后一致，hi revision4/ready及比分1:7保留。报告 `docs/coordination/qa/STUDIO-002-r3-start.md`，SHA256 a63669de296ec98b251f7391cd1575eaf27b9ee78568c023ed67c0e4688c2efe。B与工程包资源核验另见此前证据，不重复构建。
+
+B随后在QR revision2界面刷新，看到先前自己生成的“负责人亲验”历史保留；只点击该历史行，截图输入显示回填该文字，未fill/type/set。下一次正式状态取证时工具返回用户物理Escape停止，因此未完成最终亲验记录、清理或恢复hi视图；原生操作全部停止，不自动重试。已有独立QA完整回填证据仍有效，B最终余项如实留待。
+
+另观察r3侧栏顺序与r2相反，项目数据未变；初步代码线索为loadProjects逐条调用前插updateProject，尚未独立复现/修复，作为低优先级候选报A，不为此重包。预览慢仍需分段测量，不能把替身新建352ms当真实编译性能。
+
+用户进一步明确：批量生成、用户轨迹优先CLI和隔离自动回归，Computer Use仅少量最终UI检查。执行规则已存手册，B核现有runner尚未包含continuous/navigation/input新组，交QA Lead只读核查，暂不重复测试或商业调用。继续负责人B，A维护总状态。

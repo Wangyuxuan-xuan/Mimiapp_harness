@@ -12,21 +12,25 @@ import { storageBridge } from './preview-bridge.mjs';
 import { configureNetwork,modelFetch } from './network.mjs';
 
 export function parseSettings(input,current={}) {
+  if(!input||typeof input!=='object'||Array.isArray(input)||['provider','baseUrl','model','apiKey'].some(key=>input[key]!==undefined&&typeof input[key]!=='string'))throw new Error('模型配置格式无效。');
   const provider=input.provider==='custom'?'custom':'deepseek';
-  const baseUrl=String(input.baseUrl||'https://api.deepseek.com').trim().replace(/\/+$/,'');
+  const baseUrl=String(input.baseUrl||'https://api.deepseek.com').trim().replace(/\/+$/,'');if(baseUrl.length>2048)throw new Error('API 地址过长。');
   const url=new URL(baseUrl);
   if(url.username||url.password||url.search||url.hash||!(url.protocol==='https:'||(url.protocol==='http:'&&['127.0.0.1','localhost'].includes(url.hostname))))throw new Error('API 地址必须为 HTTPS；本地服务可使用 localhost。');
   const model=String(input.model||'').trim();if(!model||model.length>120)throw new Error('请填写有效的模型名称。');
   const sameEndpoint=current.baseUrl===baseUrl;
   const apiKey=String(input.apiKey||'').trim()||(sameEndpoint?current.apiKey:'')||'';
+  if(apiKey.length>4096)throw new Error('API Key 格式无效。');
   return {provider,baseUrl,model,apiKey};
 }
-export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),production=false,seed=true,build=buildProject,agent=runAgent}={}) {
+export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),production=false,seed=true,build=buildProject,agent=runAgent,credentialStore}={}) {
   configureNetwork();
   const store=new Store(root);await store.init();await recoverTasks(store);
   let config={provider:'deepseek',baseUrl:'https://api.deepseek.com',model:'deepseek-flash',apiKey:''};
-  try{config={...config,...JSON.parse(await fs.readFile(path.join(root,'settings.json'),'utf8')),apiKey:''};}catch{}
-  const publicSettings=()=>({...config,apiKey:undefined,hasKey:!!config.apiKey});
+  try{const legacy=JSON.parse(await fs.readFile(path.join(root,'settings.json'),'utf8'));config=parseSettings({provider:legacy.provider,baseUrl:legacy.baseUrl,model:legacy.model,apiKey:''});}catch{}
+  let persistedKey=false,credentialWarning='';
+  if(credentialStore){try{const saved=await credentialStore.load();if(saved){config=parseSettings(saved);persistedKey=!!config.apiKey;}}catch{credentialWarning='已保存的模型设置无法读取或系统安全存储不可用；请重新保存设置，原加密文件已保留。';}}
+  const publicSettings=()=>({provider:config.provider,baseUrl:config.baseUrl,model:config.model,hasKey:!!config.apiKey,keyStorage:{mode:credentialStore?'encrypted':'memory',available:!!credentialStore?.available,persisted:persistedKey,warning:credentialWarning}});
   const token=randomBytes(32).toString('hex'),jobs=new Map(),storageQueues=new Map(),storageRequests=new Set(),activeMutations=new Set();let closing=false;
   const preview=express();
   preview.use((req,res,next)=>{
@@ -60,6 +64,11 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
   });
   app.use(express.json({limit:'1mb'}));
   const operations=new Set();
+  let settingsQueue=Promise.resolve(),preparingRuns=0;
+  const settingsMutation=handler=>(req,res,next)=>{
+    const pending=settingsQueue.catch(()=>{}).then(async()=>{if(closing)throw new Error('应用正在关闭，设置未保存。');if(jobs.size||preparingRuns)throw new Error('请等当前制作完成或停止后再更换模型。');await handler(req,res);});
+    settingsQueue=pending;const settled=pending.then(()=>{},()=>{});activeMutations.add(settled);settled.finally(()=>activeMutations.delete(settled));pending.catch(next);
+  };
   const mutation=handler=>async(req,res,next)=>{const id=req.params.id;if(operations.has(id))return next(new Error('项目操作正在进行，请稍后再试。'));if(closing)return next(new Error('应用正在关闭。'));operations.add(id);let finish;const pending=new Promise(r=>{finish=r;});activeMutations.add(pending);try{await handler(req,res,next);}catch(e){next(e);}finally{operations.delete(id);activeMutations.delete(pending);finish();}};
   function assertIdle(id){if(jobs.has(id))throw new Error('项目正在制作，请先等待完成或停止。');}
   async function initializeProject(title,sample=false){const p=await store.create(title,sample);const draft=await store.draft(p.id);await build(draft,{onLog:text=>console.log(text)});await store.commit(p,draft,sample?'初始示例 · 日常习惯':'创建项目');return store.public(p);}
@@ -89,11 +98,17 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
     }finally{storageRequests.delete(pendingRequest);finish();}
   });
   app.post('/api/projects',async(req,res)=>{res.json(await initializeProject(req.body.title));});
-  app.post('/api/settings',async(req,res)=>{
-    if(jobs.size)throw new Error('请等当前制作完成后再更换模型。');
-    config=parseSettings(req.body,config);const {apiKey,...persisted}=config;await atomicJson(path.join(root,'settings.json'),persisted);res.json(publicSettings());
-  });
-  app.delete('/api/settings/key',(req,res)=>{if(jobs.size)throw new Error('请先停止制作。');config.apiKey='';res.json(publicSettings());});
+  app.post('/api/settings',settingsMutation(async(req,res)=>{
+    const candidate=parseSettings(req.body,config);
+    if(credentialStore){try{await credentialStore.save(candidate);}catch{throw new Error('系统安全存储写入失败，模型设置未保存。');}}
+    else{const {apiKey,...persisted}=candidate;await atomicJson(path.join(root,'settings.json'),persisted);}
+    config=candidate;persistedKey=!!credentialStore&&!!config.apiKey;credentialWarning='';res.json(publicSettings());
+  }));
+  app.delete('/api/settings/key',settingsMutation(async(req,res)=>{
+    const candidate={...config,apiKey:''};
+    if(credentialStore){try{await credentialStore.clear(candidate);}catch{throw new Error('系统安全存储清除失败，原设置已保留。');}}
+    config=candidate;persistedKey=false;credentialWarning='';res.json(publicSettings());
+  }));
   app.post('/api/settings/test',async(req,res)=>{
     const candidate=parseSettings(req.body,config);if(!candidate.apiKey)throw new Error('请先输入 API Key。');
     const response=await modelFetch(candidate.baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${candidate.apiKey}`},body:JSON.stringify({model:candidate.model,messages:[{role:'user',content:'Reply OK.'}],max_tokens:64,stream:false}),signal:AbortSignal.timeout(30000)});
@@ -111,6 +126,9 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
     p.runtimeErrors=[...p.runtimeErrors,e].slice(-10);await store.save(p);res.json(store.public(p));
   }));
   app.post('/api/projects/:id/run',mutation(async(req,res)=>{
+    let settingsSnapshot;do{settingsSnapshot=settingsQueue;await settingsSnapshot.catch(()=>{});}while(settingsSnapshot!==settingsQueue);
+    if(closing)throw new Error('应用正在关闭。');
+    preparingRuns++;try{
     const id=req.params.id;assertIdle(id);if(!config.apiKey)throw new Error('请先连接模型并填写 API Key。');
     const project=await store.get(id);if(closing)throw new Error('应用正在关闭。');let previous;
     if(req.body.resumeTaskId){previous=project.tasks.find(t=>t.id===req.body.resumeTaskId);if(!previous||!['interrupted','failed','stopped'].includes(previous.state))throw new Error('任务不能继续。');if(previous.sourceDigest!==await sourceDigest(store,project)||previous.baseRevision!==project.revision)throw new Error('源码或版本已变化，请核对当前预览后提交新的需求。');}
@@ -130,6 +148,7 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
       await checkpoint;controller.signal.throwIfAborted();controller.publicationStarted=true;task.state='completed';task.phase=done.verification?.state==='passed'?'功能检查通过':'制作结束，实际功能待验证';task.updatedAt=Date.now();await store.save(done);emit({type:'done',project:store.public(done)});
     }catch(e){await checkpoint.catch(()=>{});const reason=controller.signal.reason?.message;task.state=controller.signal.aborted?(reason==='user-stop'?'stopped':'interrupted'):'failed';task.reason=reason||(e.code==='verification-budget-exhausted'?e.code:'error');task.phase=task.state==='stopped'?'用户主动停止；不会自动继续':task.state==='interrupted'?'制作中断，可核对源码后继续':'制作失败，可核对源码后继续';task.updatedAt=Date.now();const message=controller.signal.aborted?task.phase+'，保留上一个可用版本。':redact(e.message);project.messages.push({role:'assistant',text:'本次制作未完成：'+message.slice(0,1800),time:Date.now()});await store.save(project);emit({type:'error',text:message,project:store.public(project)});}
     finally{clearTimeout(timeout);jobs.delete(id);finish();if(!res.destroyed)res.end();}
+    }finally{preparingRuns--;}
   }));
   app.post('/api/projects/:id/stop',(req,res)=>{const job=jobs.get(req.params.id);if(job?.publicationStarted)return res.status(409).json({error:'版本已开始保存，无法停止；请等待结果。'});job?.abort(new Error('user-stop'));res.json({ok:true});});
   app.post('/api/projects/:id/restore',mutation(async(req,res)=>{

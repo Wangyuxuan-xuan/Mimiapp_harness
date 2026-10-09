@@ -1,4 +1,5 @@
-const {app,BrowserWindow,session,dialog}=require('electron');
+const {app,BrowserWindow,session,dialog,safeStorage}=require('electron');
+const {createCredentialStore}=require('./credential-store.cjs');
 const path=require('node:path');
 const fs=require('node:fs');
 const {pathToFileURL}=require('node:url');
@@ -18,7 +19,8 @@ app.whenReady().then(async()=>{
       studio={url:target.origin,close:async()=>{}};
     }else{
       const {startStudio}=await import(pathToFileURL(path.join(root,'server/index.mjs')).href);
-      studio=await startStudio({port:0,root:isolatedWorkspace||(app.isPackaged||isolatedUserData?path.join(app.getPath('userData'),'workspace'):path.join(root,'.studio')),production:true});
+      const credentialStore=createCredentialStore({safeStorage,userData:app.getPath('userData')});
+      studio=await startStudio({port:0,root:isolatedWorkspace||(app.isPackaged||isolatedUserData?path.join(app.getPath('userData'),'workspace'):path.join(root,'.studio')),production:true,credentialStore});
     }
     session.defaultSession.setPermissionRequestHandler((_contents,_permission,callback)=>callback(false));
     const win=new BrowserWindow({width:1440,height:960,minWidth:960,minHeight:700,title:'小芽 · Sprout Studio',backgroundColor:'#f8faf8',autoHideMenuBar:true,webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true}});

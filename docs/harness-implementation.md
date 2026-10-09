@@ -129,3 +129,16 @@ qa-desktop-newpackage-ui-report.json passed=true：真实r3新exe、新明确隔
 修正H5 fixture的150字符首次解码只得到默认140字符，类型声明Input.d.ts:49明确Taro属性为`maxlength`；fixture误写`maxLength`，保留真实失败报告。产品生成技能提示已纠正为`maxlength={1000}`。现复用同H5产物检验120字符（>=100，未截断）的两个视口，不能据此证明fixture支持1000字符；后续真实模型项目应按正确属性生成并独立核实输入等值。
 
 同产物120字符在375视口仍未通过解码，固定5px大矩阵可能超可见宽；不再追加fixture编译。该fixture明确只证明双端/官方编译和短中文解码，不能宣布手机长文UI通过。生成技能补按320px预算从矩阵维度计算整数2–5px模块及四模块静区，后续真实模型任务独立验证。
+# 模型配置正常重开与升级持久化（2026-10-09）
+
+此前`server/index.mjs`只把地址与模型写入settings.json，API Key仅在内存；正常退出后丢Key是实现缺口，不能归为用户缺少测试输入。用户已授权通过正常应用保存本项目测试凭据，开发和验证仍只使用占位凭据，不读取聊天Key、旧运行服务或历史userdata进行迁移。
+
+复用[Electron v38.8.6 safeStorage官方文档](https://github.com/electron/electron/blob/v38.8.6/docs/api/safe-storage.md)与[同版本app/userData文档](https://github.com/electron/electron/blob/v38.8.6/docs/api/app.md)：Windows在ready后调用原生DPAPI的encryptString/decryptString。Linux若为basic_text则拒绝保存，不调用setUsePlainTextEncryption；没有明文fallback或新增加密依赖。DPAPI保护范围是Windows登录用户，不能宣称阻止同一登录用户的其它程序解密。
+
+`electron/credential-store.cjs`仅主进程创建，固定文件是当前app.userData下model-credentials-v1.bin。只公开给server的load/save/clear内部接口与可用布尔，不提供renderer解密IPC、任意路径或导出能力。保存完整白名单模型配置为一份加密原子文件，作为桌面唯一权威；保存成功后才更新server内存，写失败固定错误不回显Key/底层原因，清理临时文件。清除用无Key的完整加密配置替换，保留当前endpoint/model，重开不回退旧地址。损坏文件保留并在公开状态显示固定提示。没有迁移旧Key。
+
+正常桌面沿用稳定应用名称的Electron userData，不取release目录作为配置地址；STUDIO_USER_DATA_DIR仍明确隔离到独立路径，隔离配置不会自动继承正常userData。普通Node开发服务没有safeStorage，沿用非密钥settings.json并明确公开memory模式，退出丢Key；不会假称已加密保存。桌面首次无vault时只兼容现有非密钥地址/模型配置，之后不双写legacysettings，避免跨文件事务不一致。
+
+server设置保存与清除串行，run等待已接受的设置队列后读取最后有效配置，并锁定任务准备窗口，任务中不允许切换；同endpoint留空保留Key，换endpoint留空一定清空。关闭等待已接受设置写入；失败请求追踪为settled Promise，不因已报告的写入错误永远卡退出。publicSettings仅返回provider/baseUrl/model/hasKey和keyStorage的mode/available/persisted/warning，UI显示实际保存状态与启动损坏提示，renderer不回读Key。
+
+`tests/credentials.test.mjs`6/6通过：用占位Key及测试原生API替身验证加密文件无明文、重开、路径隔离、clear保留配置、basic_text拒绝、错误清temp/保留损坏file、公开无Key、同endpoint/换endpoint、保存中run等待、制作中clear拒绝、save→clear排序、失败保存中关闭等待，以及Node memory模式。替身不是实际DPAPI证明；独立QA使用Electron38和全新userData的原生DPAPI另行记录。未打包、未实际模型调用、未读真实vault。

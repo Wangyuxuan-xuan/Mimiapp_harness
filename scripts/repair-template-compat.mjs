@@ -1,0 +1,13 @@
+import path from 'node:path';
+import {Store,readSources,writeSource} from '../server/store.mjs';
+import {buildProject} from '../server/builder.mjs';
+const store=new Store();await store.init();
+const id=process.argv[2];if(!id)throw new Error('Provide the specific project ID to repair.');
+const p=await store.get(id),draft=await store.draft(id),files=await readSources(draft);
+const original=files['src/app.css'];
+const repaired=original.replace(/\*\s*\{\s*box-sizing:\s*border-box;?\s*\}/,'view, text, button, input, scroll-view { box-sizing: border-box; }');
+if(original===repaired)throw new Error('No known template compatibility issue found.');
+await writeSource(draft,'src/app.css',repaired);
+await buildProject(draft,{onLog:console.log});
+await store.commit(p,draft,'修复微信 WXSS 兼容性');
+console.log(path.join(store.dir(p.id),'revisions',String(p.revision)));

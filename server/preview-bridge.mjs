@@ -1,0 +1,6 @@
+export function storageBridge(projectId,initial) {
+  // Browser ports can change between desktop launches. Keep preview storage in the project,
+  // never in the editor origin, and forward only storage data through the checked parent bridge.
+  const payload=JSON.stringify({projectId,initial}).replace(/</g,'\\u003c');
+  return `<script>(()=>{const {projectId,initial}=${payload};let values={...initial};const notify=()=>parent.postMessage({type:'sprout-storage',projectId,values},{targetOrigin:'*'});const storage={getItem(k){return Object.prototype.hasOwnProperty.call(values,String(k))?values[String(k)]:null},setItem(k,v){values[String(k)]=String(v);notify()},removeItem(k){delete values[String(k)];notify()},clear(){values={};notify()},key(n){return Object.keys(values)[n]??null},get length(){return Object.keys(values).length}};Object.defineProperty(window,'localStorage',{value:storage});window.addEventListener('error',e=>parent.postMessage({type:'sprout-runtime-error',projectId,message:e.message},{targetOrigin:'*'}));window.addEventListener('unhandledrejection',e=>parent.postMessage({type:'sprout-runtime-error',projectId,message:String(e.reason?.message||e.reason)},{targetOrigin:'*'}));})();</script>`;
+}

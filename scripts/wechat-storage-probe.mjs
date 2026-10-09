@@ -1,0 +1,2 @@
+import automator from 'miniprogram-automator';import fs from 'node:fs/promises';
+const timer=setTimeout(()=>{console.log('Timed out');process.exit(2)},20000);const m=await automator.connect({wsEndpoint:'ws://127.0.0.1:9420'});console.log('page',(await m.currentPage())?.path);console.log('storage',JSON.stringify(await m.callWxMethod('getStorageSync','yueguang-reading-v1')));await m.screenshot({path:'test-results/wechat-simulator.png'});console.log('screenshot saved');m.disconnect();clearTimeout(timer);

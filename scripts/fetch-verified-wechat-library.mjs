@@ -1,0 +1,7 @@
+import fs from 'node:fs/promises';import https from 'node:https';import crypto from 'node:crypto';
+const root='C:/Users/wangy/AppData/Local/微信开发者工具/User Data/97c2c3ed9e9b4a343745d4ac3603eef1/WeappVendor';
+const cfg=JSON.parse(await fs.readFile(root+'/cfg.json','utf8'));const meta=cfg.libs['3.17.3'];if(!meta)throw Error('Missing official metadata');
+const keySource=await fs.readFile('test-results/tool-diagnostics/92871d7da8faa6699047cf98ecc1602b.js.txt','utf8');const key=keySource.match(/-----BEGIN PUBLIC KEY-----[\s\S]*?-----END PUBLIC KEY-----/)[0].replaceAll('\\n','\n');
+const b=await new Promise((resolve,reject)=>{const req=https.get(meta.url,{timeout:30000},res=>{if(res.statusCode!==200){res.resume();reject(Error('HTTP '+res.statusCode));return;}const chunks=[];res.on('data',c=>chunks.push(c));res.on('end',()=>resolve(Buffer.concat(chunks)));res.on('error',reject)});req.on('error',reject);req.on('timeout',()=>req.destroy(Error('Timeout')))});
+const md5=crypto.createHash('md5').update(b).digest('hex');const valid=crypto.createVerify('RSA-SHA1').update(md5).verify(key,Buffer.from(meta.md5,'base64'));if(!valid)throw Error('Official signature mismatch');
+await fs.writeFile('test-results/wechat-3.17.3.wxvpkg',b);const report={version:'3.17.3',url:meta.url,bytes:b.length,signatureVerified:true,sha256:crypto.createHash('sha256').update(b).digest('hex'),at:new Date().toISOString()};await fs.writeFile('test-results/wechat-library-signature.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));

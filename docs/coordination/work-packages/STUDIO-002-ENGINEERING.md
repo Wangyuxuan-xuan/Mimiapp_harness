@@ -2,7 +2,31 @@
 
 2026-10-09（北京时间）。工程负责人聊天：01a11fb4-ff38-7723-8711-298ab2608c9c。B 产品范围、集成和最终核验负责人：01a11ebf-e71e-71c0-97a1-86bcff83f324；A 独占 TASKS。本文件由工程负责人唯一维护，不代替总工作包或独立 QA 结论。
 
-## 本次文档冻结与恢复入口
+## 当前工程结论与恢复入口（2026-10-09）
+
+B已授权本轮仅更新本文件和 `docs/studio-regression.md`，不自行Git提交。产品冻结/已上传基线为 `dbe7a6bc35861315f879cf4b3d2fe7b8809a2cec`；连续制作修复树 `D:/app/.worktrees/studio-002-repair`、`codex/studio-002-continuous` 冻结于 `4e43676b9cc03f8210e2d27936c88aa9d74dcb53`。fe4分层预算试验保留历史，未单独合入；用户后续明确取消正常任务固定工具/构建/验证/接续/恢复次数及整任务时限。计数仅作使用记录，不以新任意阈值代替完成。
+
+工程按16a、bebe、4e三轮精确冻结审查，先后提出并由唯一原writer修正 E9任务/会话/草稿绑定、E10持久原文消息重建分页覆盖、E11旧额度系统提示、E12同PI失败证据处理、E13长期需求部分HTTP/UI修正、E14 build-required缓存、E15普通工具throw。4e最后增量只读审核无剩余工程阻塞；核心stale/failed精确no-progress且旧revision保留，passed绑定当前源码。工程未重跑作者整套测试；实际代码与定向TAP分别核对，不冒充独立执行。原生SessionManager.open/compaction、PI orphan toolResult投影补齐均复用本地0.99.1，不重放副作用、不替换框架或自建摘要。实现详见 `docs/studio-continuous-implementation.md`。
+
+独立证据已由QA补齐：continuous16/16与严格QR8/8，summary `test-results/studio-002-qa-continuous-4e43676-summary.json`。包含真正native自动threshold压缩/事件/继续、精确session/draft硬kill恢复、未送达需求原文不能伪已读、同PI错误纠正、旧额度兼容和停止。真实PI/Edge+本地模拟模型/HTML编译替身，不是商业模型或Taro；超旧10分钟只用历史耗时seed证明不再设帽，不称真实10分钟压力测试。两个中文分页失败已证实为QA fixture逐chunk UTF8解码错误，修为Buffer.concat后定向2/2，保留原失败及同强度原文断言，其余14项有效结果复用。
+
+B集成基础38项首轮37通过，唯一旧5工具清单遗漏read_requirements；仅该精确白名单补第六项后单项通过，报告 `test-results/studio-002-b-continuous-foundation-approved.tap` 与 `studio-002-b-continuous-tools-integrated.tap`。QA主目录dbe CLI1/1内17实际命令，报告 `studio-002-qa-cli-continuous-dbe7a6bc-approved.log`；同r2 dist独立preview/E13 3/3，60条61729字符及时间保留，报告 `studio-002-qa-preview-r2-e13-retry.txt`。预览首exact label测试定位失败原日志保留，仅QA定位修正，不改产品/业务期待。工程已核四份最新QA源码散列与报告，精确入口、按影响触发和模拟边界写入回归说明。
+
+### r2 包交接已完成，运行验收尚待后续
+
+原唯一子代理 `/root/studio2_packaging` 在B明确放行后复用，正常require_escalated审批一次正式打包，主命令session26171实际exit0；Vite1581模块11.79秒，本地Electron38.8.6/builder26.15.3，既有依赖修复1113目录。完整入口 `D:/app/release-harness-20261009-studio2-r2/win-unpacked/Sprout Studio.exe`，保留整个目录。清单与工程核查位于同output的build-manifest.json、packaging-verification.json；B独立记录 `test-results/studio-002-b-r2-package-manifest.json`。
+
+HEAD/baseCommit/finalizerSourceCommit均dbe完整SHA，43固定资源+3dist逐项匹配。工程独立重算manifest SHA256 `0292ee8f79ef9d256b28fe549fbe27095e53a097aca039dbc0137a8c62364f85`，exe SHA256 `62c62d170a95aa4a3eb3df05f0d56a3654ab4344f7452e21dea1334afed7100f`；exe壳与r1相同，版本须靠产品资源识别。清单productBase仍脚本硬编码历史值，不当本次冻结源。author缺失/asar禁用/依赖解析/配置跳过签名提示保留，没有因此改源码或重包。
+
+stage `D:/app/.package-staging-studio-20261009-r2/dist`保留，B核root/dist与stage/包3散列后复用，记录 `test-results/studio-002-b-r2-dist.json`，无额外前端构建。工程/packager未启动UI/模型、未动current/Key/用户项目/旧r1/旧服务。代理已结束，不能称仍后台打包。
+
+当前已实现并局部/独立回归通过、目录包已生成；正常r2升级配置复用、商业模型原读书同任务纠错与QR连续修改交付仍未获最终结论。继续负责人B统一放行/亲验，QA唯一实际执行，工程等待具体缺陷或下一冻结。先读TASKS、PRODUCT、B工作包和本节，再核实际HEAD/QA状态；不重复有效全套、Taro、打包或模型。A独占台账，工程不写产品/QA源、不提交本轮文档；无可靠唤醒不承诺后台持续推进。
+
+## r1与分层预算阶段（以下为历史记录）
+
+下列“当前”“待冻结”和配额策略均保留其发生时的事实，以本文件上方最新结论为准。
+
+## 历史文档冻结与恢复入口
 
 本次仅冻结本文件及docs/studio-regression.md供B显式提交同步，不纳A TASKS或QA活跃记录。稳定产品包ccae82b131abe30a7b9cc682c1b18712830d8dce、正常dev入口6a6481c34ec2cbaca77c49afe7cfc5d41803a253（已实际证明包生产资源等价）、9份独立测试94871848c724efe7d509eb228c439ed7d1926f0f、native两文件参数化ce621a7308446a2e7ca1a9771675e3aeb5e39792分别绑定。参数化支持native --package-dir绝对目录 --expected-product完整SHA，无参仅历史r1；语法/help及错误路径/错SHA早拒通过，未重复native5/5。下方保留首轮到当前的历史过程，“待冻结”等旧阶段措辞不代表最新状态。
 

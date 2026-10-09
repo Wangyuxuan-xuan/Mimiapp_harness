@@ -2,7 +2,26 @@
 
 在 `D:/app` 执行。测试源码和执行入口是回归依据；截图、JSON和TAP是某次运行的证据，不能代替可重复测试。
 
-## 版本与当前状态
+## 当前版本与已验证范围（2026-10-09）
+
+当前产品与 r2 包基线为 `dbe7a6bc35861315f879cf4b3d2fe7b8809a2cec`，已由 B 正常上传。连续制作实现冻结于 `4e43676b9cc03f8210e2d27936c88aa9d74dcb53`，集成产品相关源码散列一致。正常任务不再按工具、构建、检查、接续、恢复次数或整任务时长结束；使用次数只作记录。真实构建和当前源码功能验收、用户停止、持久草稿与原生会话恢复仍为必要条件。
+
+| 范围 | 已有有效证据 | 实际边界 |
+| --- | --- | --- |
+| B 集成基础 | `test-results/studio-002-b-continuous-foundation-approved.tap` 中37项通过；工具清单补入第六项 read_requirements 后 `studio-002-b-continuous-tools-integrated.tap` 单项通过 | 首次38项中唯一旧工具清单断言失败保留；不是重跑全套38项 |
+| 独立连续制作 | `test-results/studio-002-qa-continuous-4e43676-summary.json`：16/16 | 真实 PI 0.99.1、原生自动 threshold 压缩及事件、真实 Edge；响应式本地模拟模型、HTML 编译替身，无商业模型/Taro |
+| 严格二维码 | 同一 summary 及 `studio-002-qa-continuous-4e43676-qr8.tap`：8/8 | 真实输入驱动像素解码、长中文、空输入及隐蔽/覆盖负例；不是商业模型生成 |
+| CLI | dbe 产品的独立1/1、内17条命令 | 隔离配置及业务替身；原生加密、新包和商业模型另验，精确入口与散列见下方最新 QA 交接 |
+| 预览与需求修正 | 同 r2 dist 的独立3/3 | 真实浏览器与HTML替身，61729字符/60条历史原文和时间保留；不是Taro生成或新包正常窗口 |
+| r2 包 | `release-harness-20261009-studio2-r2/packaging-verification.json` 与 `test-results/studio-002-b-r2-package-manifest.json` | 一次正式打包 exit0，43固定资源及3dist匹配；没有因此宣称运行验收通过 |
+
+两个需求分页场景首跑失败来自 QA HTTP fixture 分块分别转 UTF-8，跨中文字符边界出现替换字符；修为 Buffer.concat 后一次解码，仅定向复验这两项2/2，原严格原文/偏移/digest断言未变，其余14项有效结果复用。失败与诊断日志均在 summary 中，不能用最终通过覆盖原记录。
+
+r2 完整目录入口为 `D:/app/release-harness-20261009-studio2-r2/win-unpacked/Sprout Studio.exe`。清单 baseCommit/finalizerSourceCommit 均为 dbe 完整 SHA；脚本硬编码的 productBase 是历史字段，不能作为本包源码版本。manifest SHA256 为 `0292ee8f79ef9d256b28fe549fbe27095e53a097aca039dbc0137a8c62364f85`。exe 是 Electron 壳，不能仅凭 exe 散列识别产品；应核清单和全部资源。stage `D:/app/.package-staging-studio-20261009-r2/dist` 已保留，QA 将3项散列与 root/dist、包内产物核对后复用，未额外构建。
+
+正常 r2 配置复用与真实模型读书、连续修改、二维码交付仍待后续验收，不能写为完成。统一 runner 尚无 continuous tier，也未为整理文档重跑 delivery；连续轨迹使用下面的直接测试入口。下节保留 r1 和旧测试版本的历史证据，不代表当前产品仍使用旧额度。
+
+## r1 与旧测试版本（历史证据）
 
 - 当前目录包产品基线：`ccae82b131abe30a7b9cc682c1b18712830d8dce`。
 - 包：`release-harness-20261009-studio2-r1/win-unpacked/Sprout Studio.exe`，使用时保留整个目录。资源基线见输出目录的 `build-manifest.json`，工程核查见 `packaging-verification.json`。
@@ -11,9 +30,33 @@
 - 后续仅tests/docs及回归scripts变更使用独立测试版本记录，不改变上述包的产品基线，也不自动触发重包。
 - 开发入口修正版本为 `6a6481c34ec2cbaca77c49afe7cfc5d41803a253`，已合入普通dev安全启动修正；本次仅package scripts和说明变化，工程实际将package删除scripts/build/devDependencies后与stage及包内JSON逐项比较一致，生产化规范JSON SHA256为 `ba2a4dceac8f1c825226361610934ff9572aefe882a7696dbcbc6fee26b3e8a3`，无需重包。后续测试提交不改变这一包资源结论。
 - native参数化版本：`ce621a7308446a2e7ca1a9771675e3aeb5e39792`，只改两份回归文件。语法/help及错误包路径/错误SHA早拒已验证，没有重复原5/5桌面运行。
-- 计划纠正与分层预算v2尚待实施、冻结及独立QA；不属于以上包或已通过套件结论。用户读书任务出现两次定位歧义和一次成功子检查共耗三次检查额度，同一PI会话收到错误并修改了计划，第四调用被旧预算拒绝。原任务不重跑、不重置预算。新增回归将要求模型依据真实候选语义纠正、保持原业务期待；具体入口待QA冻结后追加。
+- 旧读书任务出现两次定位歧义和一次成功子检查共耗三次检查额度，同一PI会话收到错误并修改了计划，第四调用被旧预算拒绝。分层预算v2试验 fe4ba9b 保留为历史，未单独交付；用户随后取消正常任务固定额度。当前方向和验证结果以上节 continuous/r2 为准；原用户现场不自动复活或重跑。
 
 ## 本地入口
+
+当前连续轨迹精确入口如下。先确认4e工作树仍干净且HEAD匹配；测试自身拒绝错误版本、活动产品改动和越界目录。环境覆盖仅对本条测试使用，结束后移除，不给CLI/preview/native继承。该组使用每项自己的测试超时，不能套统一runner的90秒全项超时替代。
+
+```powershell
+$env:STUDIO_QA_PRODUCT_ROOT='D:/app/.worktrees/studio-002-repair'
+$env:STUDIO_QA_EXPECTED_PRODUCT='4e43676b9cc03f8210e2d27936c88aa9d74dcb53'
+try { node --test --test-concurrency=1 tests/qa/plan-correction-journey.test.mjs }
+finally { Remove-Item Env:STUDIO_QA_PRODUCT_ROOT,Env:STUDIO_QA_EXPECTED_PRODUCT -ErrorAction SilentlyContinue }
+```
+
+CLI 和预览最新实际入口分别为 `node --test tests/qa/cli-journey.test.mjs`、`node --test tests/qa/preview-journey.test.mjs`，在主目录 dbe 基线上运行；需要时正常申请环境审批，不故意先复现 junction/realpath EPERM。报告分别为 `test-results/studio-002-qa-cli-continuous-dbe7a6bc-approved.log`（1/1、17命令）与 `test-results/studio-002-qa-preview-r2-e13-retry.txt`（3/3）。预览首次 `studio-002-qa-preview-r2-e13.txt` 因QA exact label包含textarea原文而定位失败，修为唯一前缀label/textarea定位，业务期待未改。前端复用记录为 `test-results/studio-002-b-r2-dist.json`，不是额外一次构建。
+
+continuous summary 中 QR8 曾通过精确 Node24 registerHooks 将唯一测试文件的 `../../server/verify.mjs` 指向4e工作树，同时核HEAD/clean/hash；这是该次冻结执行的产品绑定，不能默认不加loader就仍验证工作树。主目录已集成相同verify散列，未来直接 `node --test tests/qa/qr-delivery.test.mjs` 选择主目录产品，应记录当次HEAD，不能冒称复用了旧loader执行。
+
+最新QA源码SHA256（尚未以新测试提交替代初版提交号时，以此散列绑定实际证据）：
+
+| 文件 | SHA256 |
+| --- | --- |
+| tests/qa/plan-correction-journey.test.mjs | d23d0fa9e7812d6208d4ca3accaa2627acd99a064fb60c48cd1bb398e2e8fed1 |
+| tests/qa/plan-correction-fixture.mjs | 56b2d4211958f250a3c0dae552359c3155bc056cb0e754ce315db6d571e60f9f |
+| tests/qa/cli-journey.test.mjs | 1f03f45e1c6b3c0fcbe6dabd46da37b9fd01adb90a1a4cc3d0c9c5cbe28a9729 |
+| tests/qa/preview-journey.test.mjs | 075f61dbd98a849b9b0b44d28fc7e2b77a2cf66863a1dedc46e5137e4b0751a3 |
+
+工程实际重算这四项散列并读取对应报告一致；仅核证据，没有为文档重跑。QR两份文件散列未变，见历史散列表及当前summary。以下统一入口继续可用，但 `delivery` 暂未包含新增continuous组：
 
 ```powershell
 node scripts/studio-qa.mjs help
@@ -23,10 +66,10 @@ node scripts/studio-qa.mjs delivery
 node scripts/studio-qa.mjs native
 ```
 
-`native`无参明确只选择历史studio2-r1/ccae82b。验证新包必须成对给出包的绝对目录和完整产品SHA，例如验证当前固定包：
+`native`无参明确只选择历史studio2-r1/ccae82b。验证新包必须成对给出包的绝对目录和完整产品SHA，例如指定 r2（本命令仅列入口，未据此宣称已运行）：
 
 ```powershell
-node scripts/studio-qa.mjs native --package-dir D:/app/release-harness-20261009-studio2-r1 --expected-product ccae82b131abe30a7b9cc682c1b18712830d8dce
+node scripts/studio-qa.mjs native --package-dir D:/app/release-harness-20261009-studio2-r2 --expected-product dbe7a6bc35861315f879cf4b3d2fe7b8809a2cec
 node scripts/studio-qa.mjs native --help
 ```
 
@@ -43,12 +86,13 @@ node scripts/studio-qa.mjs native --help
 | 配置、共享客户端、CLI业务 | `cli` | `tests/qa/cli-journey.test.mjs`的隔离业务轨迹 |
 | 新建准备、预览尺寸和桌面缩放 | `preview` | `tests/qa/preview-journey.test.mjs`的实际浏览器轨迹 |
 | 二维码业务检查、空输入证据 | `qr` | `tests/qa/qr-delivery.test.mjs`的动态QR正反例 |
-| 预算、准备及CLI基础交互 | `core` | agent-budget、studio-preview及CLI轨迹 |
+| 持续制作、准备及CLI基础交互 | `core` | agent-budget（文件名沿用，断言已取消旧帽）、studio-preview及CLI轨迹 |
+| 原生压缩、长需求覆盖、同会话反馈与恢复 | 直接运行 `tests/qa/plan-correction-journey.test.mjs` | 16项连续轨迹；尚未纳入统一runner，不能把delivery等同于已包含此组 |
 | 同会话自主修复、失败与停止 | `repair` | `tests/repair-loop.test.mjs` |
 | 准备/验证、恢复响应衔接 | `handoff` | `tests/studio-integration.test.mjs` |
 | 浏览器与验证器相关改动 | `browser` | preview、QR、空输入反馈及集成衔接 |
 | 交付前核心跨包回归 | `delivery` | core、repair、browser去重后的集合 |
-| Windows包配置一次保存与跨目录重开 | `native` | 独立原生桌面轨迹，固定studio2-r1包，自造占位，显式触发且不含于delivery |
+| Windows包配置一次保存与跨目录重开 | `native` 加包路径/SHA | 独立原生桌面轨迹，无参仅历史r1，自造占位，显式触发且不含于delivery |
 
 具体断言、替身范围和结果以冻结QA源码及其报告为准。先跑受影响的轨迹；准备交付时跑一次 `delivery`，复用同版本有效结果。仅文档调整不自动运行昂贵检查，失败后按原因定向修复与复验。
 
@@ -76,7 +120,7 @@ node scripts/studio-qa.mjs native --help
 
 涉及Electron配置/进程退出/打包资源/生产依赖的改动，或需要交付新产品包时，由B明确冻结产品版本，安排唯一打包执行者及独立包内QA。仅tests/docs/回归入口变更不是重包理由。打包使用现有脚本、固定新目录及 `--source-commit FULL_SHA`，运行前核对实际HEAD和产品输入；不覆盖旧包、不自动下载依赖。
 
-真实模型检查仅在已有明确授权且B安排唯一执行者后进行；通过已有安全配置持续复用，测试不得读取或转移历史凭据，也不依赖A手填或Computer Use反复录入。应绑定固定exe、新项目、模型调用范围和重试预算，覆盖正常启动、配置复用、新建、自然生成、实际预览、连续修改、失败修复、导出、重开继续。可复用有效编译和像素产物，不因报告整理重复模型或Taro。原生/最终真实流程的执行归属及恢复步骤见 `docs/coordination/qa/STUDIO-002-final-execution.md`。
+真实模型检查仅在已有明确授权且B安排唯一执行者后进行；通过已有安全配置持续复用，测试不得读取或转移历史凭据，也不依赖A手填或Computer Use反复录入。应绑定固定exe、新项目、授权调用范围及实际调用/token和可得成本依据，覆盖正常启动、配置复用、新建、自然生成、实际预览、连续修改、失败修复、导出、重开继续。正常制作不重新引入固定次数或整任务硬时长；供应商传输重试、单操作超时与无进展诊断须区别记录。可复用有效编译和像素产物，不因报告整理重复模型或Taro。原生/最终真实流程的执行归属及恢复步骤见 `docs/coordination/qa/STUDIO-002-final-execution.md`。
 
 ## 当前冻结测试文件散列
 

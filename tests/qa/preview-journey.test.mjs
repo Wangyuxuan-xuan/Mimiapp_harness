@@ -90,6 +90,59 @@ test('independent preview user journey: immediate input, honest preparation, sca
       project.tasks=[{id:'qa-'+state,state,phase:'QA '+state,resumable:false,events:[]}];await studio.store.save(project);await page.reload();await composer.waitFor();assert.equal(await page.getByRole('button',{name:'核对源码并继续',exact:true}).count(),0);
       project.tasks[0].resumable=true;await studio.store.save(project);await page.reload();await page.getByRole('button',{name:'核对源码并继续',exact:true}).waitFor();
     }
+    // Historical fixed-limit failures gain an explicit resume projection without
+    // rewriting their persisted reason/flag. Manual false without a legacy reason
+    // remains covered above. Run only after the continuous-task product is integrated.
+    for(const state of ['interrupted','failed','stopped'])for(const reason of ['tool-budget-exhausted','build-budget-exhausted','verification-budget-exhausted','recovery-budget-exhausted','timeout']){
+      const legacy={id:`qa-legacy-${state}-${reason}`,state,phase:'历史限制中断',reason,resumable:false,events:[]};
+      project.tasks=[legacy];await studio.store.save(project);
+      const response=await fetch(studio.url+`/api/projects/${project.id}`,{headers});assert.equal(response.status,200);
+      const projected=(await response.json()).tasks.at(-1);
+      assert.equal(projected.id,legacy.id);assert.equal(projected.state,state);assert.equal(projected.reason,reason);assert.equal(projected.resumable,true,'Historical fixed-limit task must be explicitly resumable');
+      const persisted=(await studio.store.get(project.id)).tasks.at(-1);assert.equal(persisted.reason,reason);assert.equal(persisted.resumable,false,'Public projection must not rewrite historical evidence');
+      await page.reload();await page.getByRole('button',{name:'核对源码并继续',exact:true}).waitFor();
+    }
+    project.tasks=[{id:'qa-legacy-completed',state:'completed',phase:'已完成',reason:'verification-budget-exhausted',resumable:true,events:[]}];await studio.store.save(project);
+    await page.reload();await composer.waitFor();assert.equal(await page.getByRole('button',{name:'核对源码并继续',exact:true}).count(),0);
+    const callsBeforeCompletedResume=agentCalls;
+    const completedResume=await fetch(studio.url+`/api/projects/${project.id}/run`,{method:'POST',headers,body:JSON.stringify({resumeTaskId:'qa-legacy-completed'})});
+    assert.equal(completedResume.status,400,'Completed tasks must not be resumed');assert.equal(agentCalls,callsBeforeCompletedResume);
+    await t.test('E13 MemoryModal edits only goal and constraints while preserving long history and timestamps',async()=>{
+      const changes=Array.from({length:60},(_,index)=>({text:`历史条目 ${index}\n${'保留原始需求'.repeat(170)}`,time:1700000000000+index*1234}));
+      const originalChanges=structuredClone(changes),historyText=changes.map(item=>item.text).join('\n');
+      assert.ok(historyText.length>48000);assert.ok(changes.every(item=>item.text.length<48000));
+      const target=await studio.store.get(project.id);
+      target.memory={goal:'原目标',constraints:'原约束',changes,updatedAt:1700000000000};await studio.store.save(target);
+      await page.reload();await page.getByRole('button',{name:'项目需求',exact:true}).click();
+      const dialog=page.getByRole('dialog',{name:'项目需求',exact:true});
+      // React's controlled textarea initial text is part of its wrapping label's
+      // textContent; exact label names include that value. Keep semantic prefixes
+      // and reject ambiguity instead of selecting first/nth.
+      const memoryField=async(scope,prefix)=>{
+        const label=scope.locator('label').filter({hasText:new RegExp('^'+prefix)});
+        assert.equal(await label.count(),1,`Expected one memory label starting with ${prefix}`);
+        const textarea=label.locator('textarea');assert.equal(await textarea.count(),1);return textarea;
+      };
+      assert.equal(await (await memoryField(dialog,'需求与后续变更')).inputValue(),historyText);
+      const goal='只更新目标：保留全部需求历史',constraints='只更新约束：不重写历史或时间戳';
+      await (await memoryField(dialog,'目标')).fill(goal);await (await memoryField(dialog,'长期约束')).fill(constraints);
+      const memoryUrl=studio.url+`/api/projects/${project.id}/memory`;
+      const pendingRequest=page.waitForRequest(request=>request.url()===memoryUrl&&request.method()==='PUT');
+      const pendingResponse=page.waitForResponse(response=>response.url()===memoryUrl&&response.request().method()==='PUT');
+      await dialog.getByRole('button',{name:'保存修正',exact:true}).click();
+      const [request,response]=await Promise.all([pendingRequest,pendingResponse]);
+      assert.deepEqual(request.postDataJSON(),{goal,constraints},'Unchanged history must be omitted from the UI update payload');assert.equal(response.status(),200);
+      await dialog.waitFor({state:'hidden'});
+      const saved=await studio.store.get(project.id);assert.equal(saved.memory.goal,goal);assert.equal(saved.memory.constraints,constraints);assert.deepEqual(saved.memory.changes,originalChanges);
+      const apiResponse=await fetch(studio.url+`/api/projects/${project.id}`,{headers});assert.equal(apiResponse.status,200);
+      const apiMemory=(await apiResponse.json()).memory;assert.equal(apiMemory.goal,goal);assert.equal(apiMemory.constraints,constraints);assert.deepEqual(apiMemory.changes,originalChanges);
+      await page.reload();await page.getByRole('button',{name:'项目需求',exact:true}).click();
+      const reopened=page.getByRole('dialog',{name:'项目需求',exact:true});
+      assert.equal(await (await memoryField(reopened,'目标')).inputValue(),goal);assert.equal(await (await memoryField(reopened,'长期约束')).inputValue(),constraints);
+      assert.equal(await (await memoryField(reopened,'需求与后续变更')).inputValue(),historyText);
+      await reopened.getByRole('button',{name:'关闭',exact:true}).click();
+      t.diagnostic(JSON.stringify({check:'E13 actual MemoryModal partial update',historyEntries:changes.length,historyCharacters:historyText.length,preservedTimes:changes.length}));
+    });
     t.diagnostic(JSON.stringify({bootstrapInputMs,newInputMs,measurements,agentCalls,buildCalls,realTaroBuilds:0,realModelRequests:0}));
   }finally{
     releaseSeed();rejectNew(new Error('QA cleanup'));

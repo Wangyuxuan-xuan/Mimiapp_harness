@@ -82,3 +82,14 @@ B负责三包集成及必要的集成窄修，自己的改动由QA Lead独立验
 - B派唯一原repair writer /root/studio_repair，复用D:/app/.worktrees/studio-002-repair切新分支codex/studio-002-feedback，从9487184；旧e3分支保留。工程Lead只读审核；QA Lead已续派非开发qa_repair为主树唯一新增tests/qa/plan-correction-journey.test.mjs(+必要fixture)writer，其他源码不并发写。
 - 批准最小v2契约：宿主verify分类plan/business/runtime/external，单元素action歧义有限可见候选/语义CSS建议，不取input.value/fullDOM、不自动first/nth/改期待；count多匹配合法。3business（含passed）/3plan（静态动态）/6browser启动联合上限，总40tools/10min/3build/hostrepair3/SDKretry1保留；runtime/external合计1次重试后停，重复稳定计划歧义指纹拦截浏览器。启动前runs+inFlight落盘，终态原子分类清inFlight，硬kill恢复保守business扣一次，旧无v2按旧verifyAttempts保守锁定不退款复活。仅宿主真实verify分类免费plan，注入/未知按business保守。实际代码/独立验证待冻结，不记解决。
 - 原生测试未来包参数化两文件已提交ce621a7308446a2e7ca1a9771675e3aeb5e39792：native --package-dir绝对目录 --expected-product完整SHA；错路径/错SHA在启动前硬拒，原5/5不重复。当前包产品仍ccae82b，main开发入口6a6481c、持久初版测试9487184，参数化ce621a7。v2源码后需要新正常包及独立同一自然需求内模型接反馈自主语义纠正通过，再恢复QR完整历程/B亲验；模型配置current复用无需重配。A继续独占TASKS，B独占main Git。
+- 产品长期入口 docs/PRODUCT.md 与 README 链接已提交并上传4986f3d，A已全文核对认可；工程/QA Lead均实际读过并纳入交接。明确专做小程序的 Coding Agent、多轮反馈修复与验证是基础，微信长期愿景和当前桌面范围分开；不改变本轮授权。当前r1不含v2、不记整体通过。
+- 开发者局部真实Edge新增8/8通过，覆盖两次歧义+一次成功子检查后第四次语义扫码检查、内部多输入框、maxlength业务失败、透明祖先、page关闭external及abort。B/工程Lead继续冻结审查，补所有isContentEditable禁止正文、role限长、每次verify工具结果携带已持久计数后的budget/remaining。尚无冻结SHA或独立执行结果；QA两新增源码准备已冻结、语法通过、未运行活动产品树，待精确SHA立即独立复验。
+
+### 最新用户方向：持续多轮制作，取消固定正常任务额度
+- A直接传达用户重大纠偏，覆盖此前3/6检查、40tools、3build、10分钟、3hostrepair及恢复次数门限方案：正常制作持续反馈修复，长上下文使用 PI 原生 compaction/持久恢复；不以固定次数或整任务硬时长替代任务完成。保留真实业务门、结构化错误候选、分类、隐私、版本保护、用户停止和恢复记录。无进展须基于证据诊断/换策略/诚实可恢复，不无穷重复同错，也不另造任意阈值。
+- v2冻结fe4ba9bd0fad1b3d15a1877123ba3828f857a187仅作历史试验，tree clean，不合入主线或打包；开发8/8+hardkill1/1+QR5/5+最后补丁3/3与1/1证据保留，不宣称新方向完成。B已撤回旧额度独立验收与打包放行，QA仅安全停止自有测试并报告实际状态，禁止用户现场操作。两Lead与唯一repair writer接只读新方案评估，未放行新代码写入。
+- 代码调整需覆盖agent/harness/index/skill的固定计数与硬时长、task恢复资格与公开字段/文案、原生会话压缩及继续；工具单操作合理超时和供应商实际rate limit须区分整任务任意时长，不机械删除。保留计数/耗时作事实观测，去除剩余额度UI/提示。供应商故障如实反馈与可恢复，不静默无限重发。
+- 下一步：工程Lead与writer核本地PI0.99.1/官方支持，B锁最小合同及新分支唯一writer→QA改持续反馈/压缩恢复/stop/真实交付轨迹→独立冻结验证→新包当前配置复用及真实任务→B亲验。PRODUCT已同步最新方向和持续差距队列；B主动排序范围内改进，与A协调，不等待A重复派活。仍不推定新费用、微信迁移、账号或发布授权。
+- 工程Lead与writer只读核对完成，无需新依赖；B正式放行/root/studio_repair从fe4新建codex/studio-002-continuous，保持唯一产品writer。范围agent/harness/index/store必要草稿恢复、skill、相称工程tests与docs/studio-continuous-implementation.md；UI/CLI仅实际必要小改。工程Lead只读审核，QA源码冻结等待新合同，不并发改产品。允许正常任务跨旧限制完成，不修改用户项目/Key、不打包/push/真实模型。
+- 原生恢复合同：精确SessionManager.open(sessionFile,sessionDir,cwdOverride)，核项目/task/session/draft归属及baseRevision/sourceDigest；失败/停止/硬kill保留草稿，恢复不重放工具副作用，重新构建/验证当前源码。旧无草稿记录诚实退化为基线重建，旧预算锁仅允许显式继续，不自动复活现场。去除可恢复session/task的50条裁剪。原生auto compaction已有enabled，需真实PI链测试/事件进度/stop；历史需求不无限塞system，不手写摘要替代PI。供应商SDKretry1暂保留为传输参数，不能当产品轮数。费用数字未知则不虚构，真实任务记录调用/token及可得成本依据。
+- 独立QA停止旧方案实际确认：本次只读，未改两新增源码、未启动任何测试/本地模型/Edge/服务/子进程；无终止清理事项。两文件仍旧v2待改源且未纳Git，不能算新方向通过。工程另外发现联合CSS选择器填子输入框作用域问题，已交唯一writer相称修复；恢复会话不得因扫描到历史assistant.error就误判本轮失败。

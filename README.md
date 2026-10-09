@@ -42,7 +42,7 @@ npm run dev
 - 当前允许编辑一个页面、项目内组件及样式；应用内多个视图可用 React 状态切换。完整多路由管理、云数据库、登录、支付、真机调试尚未集成。
 - 右侧明确标为 H5 交互预览，不等同于微信运行时。微信专属 API 和最终兼容性需要在官方工具及真机验证。
 - 找到本机微信开发者工具后，每次微信端构建额外运行官方 WXML/WXSS 编译器。可用 `WECHAT_DEVTOOLS_PATH` 指定安装位置。没有该工具时，仅执行 Taro 编译和产物结构检查。
-- Agent 开放 `list_files`、`read_file`、`write_file`、`build_preview`、`verify_preview` 五个项目工具，不开放终端。预览在独立本机来源运行，不能直接使用编辑器 API。
+- Agent 开放 `list_files`、`read_file`、`read_requirements`、`write_file`、`build_preview`、`verify_preview` 六个项目工具，不开放终端。预览在独立本机来源运行，不能直接使用编辑器 API。
 - 这是供本机可信使用的 demo，未经过面向恶意生成代码的安全审计，不应公开部署为多用户服务。
 
 ## 测试

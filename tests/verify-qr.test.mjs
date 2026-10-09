@@ -25,7 +25,7 @@ test('unique Taro host fills, QR pixels decode Chinese across legal sizes and mi
   assert.ok(result.qrChecks.every(q=>q.fullyVisible&&q.viewportImageDigest?.length===64&&q.imageDigest?.length===64&&q.box.width>0));
   await fs.mkdir('test-results',{recursive:true});await fs.writeFile('test-results/studio-repair-qr-positive.json',JSON.stringify(result,null,2));
   for(const [steps,pattern] of [
-   [[{action:'fill',selector:'.ambiguous',value:'x'},{action:'text',selector:'#echo',value:'x'}],/内部输入框数量：2/],
+   [[{action:'fill',selector:'.ambiguous',value:'x'},{action:'text',selector:'#echo',value:'x'}],/单元素检查选择器匹配多个元素/],
    [[{action:'qr',selector:'#qr',value:'不同文字'}],/二维码内容不符/],
    [[{action:'qr',selector:'#fake',value:'一二三'}],/无法解码/],
   ]){const failed=await verifyPreview(root,steps);assert.equal(failed.state,'failed');assert.match(failed.error,pattern);}

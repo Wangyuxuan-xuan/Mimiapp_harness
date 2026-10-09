@@ -64,7 +64,7 @@ export class Store {
     const all=await Promise.all(names.filter(x=>/^[a-f0-9-]{36}$/.test(x)).map(id=>this.get(id).catch(()=>null)));
     return all.filter(Boolean).sort((a,b)=>b.updatedAt-a.updatedAt).map(p=>this.public(p));
   }
-  public(p) { return {...p, versions:p.versions.map(({files,...v})=>v)}; }
+  public(p) { return {...p,tasks:p.tasks.map(t=>({...t,...(['failed','stopped','interrupted'].includes(t.state)&&(/budget-exhausted$/.test(t.reason||'')||t.reason==='timeout')?{resumable:true,resumeNote:'历史次数限制已取消，可显式恢复；旧原因保留。'}:{})})), versions:p.versions.map(({files,...v})=>v)}; }
   async create(title='我的新小程序',sample=false) {
     const id=randomUUID(), dir=this.dir(id); await fs.mkdir(dir,{recursive:true});
     await fs.cp(path.join(APP_ROOT,'templates/mini'),path.join(dir,'current'),{recursive:true});
@@ -84,6 +84,16 @@ export class Store {
       }else await writeSource(dir,name,content);
     }
     return dir;
+  }
+  async taskPath(id,kind,ref){
+    if(!['drafts','sessions'].includes(kind)||typeof ref!=='string'||ref!==path.basename(ref)||ref.includes('..')||ref.includes('/')||ref.includes('\\'))throw new Error('恢复引用无效。');
+    const project=this.dir(id),base=path.join(project,kind),target=path.join(base,ref);
+    for(const entry of [path.join(this.root,'projects'),project,base,target]){const stat=await fs.lstat(entry);if(stat.isSymbolicLink()||stat.isFile()&&stat.nlink>1)throw new Error('恢复路径不能使用链接。');}
+    const targetStat=await fs.lstat(target);if(kind==='drafts'?!targetStat.isDirectory():!targetStat.isFile())throw new Error('恢复路径类型无效。');
+    const realBase=await fs.realpath(base),realTarget=await fs.realpath(target);if(path.dirname(realTarget)!==realBase)throw new Error('恢复路径越界。');
+    if(kind==='drafts'){const inspect=async dir=>{for(const ent of await fs.readdir(dir,{withFileTypes:true})){const full=path.join(dir,ent.name),stat=await fs.lstat(full);if(stat.isSymbolicLink()||stat.isFile()&&stat.nlink>1)throw new Error('恢复草稿内不能使用链接。');if(stat.isDirectory())await inspect(full);}};await inspect(target);}
+    if(kind==='sessions'&&!ref.endsWith('.jsonl'))throw new Error('恢复会话格式无效。');
+    return target;
   }
   async commit(project,draft,label,{signal,beforePublish}={}) {
     signal?.throwIfAborted();const files=await readSources(draft);signal?.throwIfAborted();

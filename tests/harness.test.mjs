@@ -13,10 +13,10 @@ test('M1 full history migration, corrections, secret removal, restart and rollba
  const s=await fresh(),p=await s.create('清单');delete p.memory;p.messages=[{role:'user',text:'长期：离线保存且中文',time:1},...Array.from({length:14},(_,i)=>({role:'user',text:'变更 '+i,time:i+2}))];await s.save(p);
  assert.match(memoryContext(p),/离线保存且中文/);remember(p,'不要保存 secret-test-key','secret-test-key');assert.doesNotMatch(memoryContext(p),/secret-test-key/);
  p.memory.constraints='用户修正：不联网';const d=await s.draft(p.id);await fakeBuild(d);await s.commit(p,d,'first');const first=p.versions[0];p.memory.constraints='用户修正：不收集身份';await s.save(p);const restarted=await new Store(s.root).get(p.id);assert.equal(restarted.memory.constraints,'用户修正：不收集身份');const rollback=await s.draft(p.id,first.files);await fakeBuild(rollback);await s.commit(restarted,rollback,'rollback');assert.equal(restarted.memory.constraints,'用户修正：不收集身份');assert.equal(first.memory.constraints,'用户修正：不联网');
- p.memory.constraints='x'.repeat(LIMITS.memoryChars);assert.throws(()=>memoryContext(p),/整理/);assert.equal(p.memory.constraints.length,LIMITS.memoryChars);
+ p.memory.constraints='x'.repeat(LIMITS.memoryChars);assert.ok(memoryContext(p).includes(p.memory.constraints));remember(p,'后续需求仍保留','');assert.ok(memoryContext(p).includes('后续需求仍保留'));assert.equal(p.memory.constraints.length,LIMITS.memoryChars);
 });
-test('M2 restart is interrupted, retry capped and source mismatch detectable',async()=>{
- const s=await fresh(),p=await s.create('恢复');const t=await createTask(s,p,'做清单');await recoverTasks(s);assert.equal((await s.get(p.id)).tasks[0].state,'interrupted');assert.equal(await sourceDigest(s,p),t.sourceDigest);await writeSource(path.join(s.dir(p.id),'current'),'src/pages/index/index.css','page{color:red}');assert.notEqual(await sourceDigest(s,p),t.sourceDigest);await assert.rejects(createTask(s,p,'继续',{attempts:3}),/上限/);
+test('M2 restart is interrupted, repeated resume allowed and source mismatch rejected',async()=>{
+ const s=await fresh(),p=await s.create('恢复');const t=await createTask(s,p,'做清单');await recoverTasks(s);assert.equal((await s.get(p.id)).tasks[0].state,'interrupted');assert.equal(await sourceDigest(s,p),t.sourceDigest);await writeSource(path.join(s.dir(p.id),'current'),'src/pages/index/index.css','page{color:red}');assert.notEqual(await sourceDigest(s,p),t.sourceDigest);await assert.rejects(createTask(s,p,'继续',t),/基线源码或版本已变化/);const resumed=await createTask(s,p,'继续',{...t,attempts:5,state:'stopped',sourceDigest:await sourceDigest(s,p)});assert.equal(resumed.attempts,6);
 });
 async function waitFor(fn){for(let i=0;i<100;i++){const value=await fn();if(value)return value;await new Promise(r=>setTimeout(r,30));}throw new Error('wait timed out');}
 test('M2 HTTP disconnect continues, explicit stop persists, resume checks code and closure interrupts',async()=>{
@@ -40,3 +40,9 @@ test('M2 checkpoint write failure cannot report completed',async()=>{
 });
 import {verifyPreview} from '../server/verify.mjs';
 test('M3 rejects empty or meaningless business assertions before launching a browser',async()=>{for(const steps of [[{action:'click',selector:'.x'}],[{action:'text',selector:'.x',value:''}],[{action:'text',selector:'.x'}],[{action:'count',selector:'.x',value:-1}],[{action:'count',selector:'.x',value:NaN}]])await assert.rejects(verifyPreview('unused',steps));});
+
+test('E13 long history survives partial constraint correction and compatible full replacement without aggregate cap',async()=>{
+ const s=await fresh(),p=await s.create('长期需求');p.memory.changes=[{text:'旧合法原文'.repeat(11000),time:1},{text:'后续'.repeat(12000),time:2}];await s.save(p);const old=structuredClone(p.memory.changes);assert.ok(JSON.stringify(old).length>48000);const studio=await startStudio({root:s.root,port:0,production:true,seed:false,build:fakeBuild});
+ try{const headers={'X-Studio-Token':studio.token,'Content-Type':'application/json'},put=body=>fetch(studio.url+'/api/projects/'+p.id+'/memory',{method:'PUT',headers,body:JSON.stringify(body)});const partial=await put({constraints:'用户最新修正：中文离线'});assert.equal(partial.status,200);let saved=await s.get(p.id);assert.deepEqual(saved.memory.changes,old);assert.equal(saved.memory.constraints,'用户最新修正：中文离线');const full=await put({goal:'长期记录',constraints:'继续离线',changes:old});assert.equal(full.status,200);saved=await s.get(p.id);assert.deepEqual(saved.memory.changes,old);assert.equal(saved.memory.goal,'长期记录');for(const invalid of [[],null,42,'text',{constraints:[]},{changes:{}},{changes:[null]},{changes:[{text:42}]},{goal:'x'.repeat(48001)}])assert.equal((await put(invalid)).status,400);assert.deepEqual((await s.get(p.id)).memory.changes,old);
+ }finally{await studio.close();}
+});

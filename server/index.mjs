@@ -7,7 +7,7 @@ import archiver from 'archiver';
 import { APP_ROOT,Store,atomicJson,readSources } from './store.mjs';
 import { buildProject } from './builder.mjs';
 import { runAgent } from './agent.mjs';
-import { remember,safeText,safeValue,textRedactor,createTask,recoverTasks,sourceDigest,LIMITS,checkpointBudget } from './harness.mjs';
+import { remember,safeText,safeValue,textRedactor,createTask,recoverTasks,sourceDigest,LIMITS,checkpointBudget,recoverVerificationInFlight } from './harness.mjs';
 import { storageBridge } from './preview-bridge.mjs';
 import { configureNetwork,modelFetch } from './network.mjs';
 import { verifyPreview,verificationRequirements,validateVerificationPlan,validateVerificationEvidence } from './verify.mjs';
@@ -152,9 +152,11 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
     const body=await response.json();if(!body.choices?.length)throw new Error('服务响应格式不兼容 Chat Completions。');res.json({ok:true});
   });
   app.put('/api/projects/:id/memory',mutation(async(req,res)=>{
-    assertIdle(req.params.id);const p=await store.get(req.params.id);const {goal,constraints,changes}=req.body;
-    if(typeof goal!=='string'||typeof constraints!=='string'||!Array.isArray(changes)||changes.some(x=>typeof x.text!=='string')||JSON.stringify(req.body).length>LIMITS.memoryChars)throw new Error('需求格式无效或超过容量。');
-    p.memory={goal:safeText(goal,config.apiKey),constraints:safeText(constraints,config.apiKey),changes:changes.map(x=>({text:safeText(x.text,config.apiKey),time:Number(x.time)||Date.now()})),updatedAt:Date.now()};await store.save(p);res.json(store.public(p));
+    if(!req.body||Object.getPrototypeOf(req.body)!==Object.prototype)throw new Error('需求格式必须为对象。');
+    assertIdle(req.params.id);const p=await store.get(req.params.id);const {goal=p.memory.goal,constraints=p.memory.constraints,changes}=req.body;
+    const validField=(text,old)=>typeof text==='string'&&(text.length<=LIMITS.memoryChars||text===old);
+    if(!validField(goal,p.memory.goal)||!validField(constraints,p.memory.constraints)||(changes!==undefined&&(!Array.isArray(changes)||changes.some(x=>!x||!validField(x.text,'')&&!p.memory.changes.some(old=>old.text===x.text)))))throw new Error('需求字段格式无效或单条内容过大。');
+    p.memory={goal:safeText(goal,config.apiKey),constraints:safeText(constraints,config.apiKey),changes:changes===undefined?p.memory.changes:changes.map(x=>({text:safeText(x.text,config.apiKey),time:Number(x.time)||Date.now()})),updatedAt:Date.now()};await store.save(p);res.json(store.public(p));
   }));
   app.post('/api/projects/:id/runtime-error',mutation(async(req,res)=>{
     assertIdle(req.params.id);const p=await store.get(req.params.id);if(req.body.revision!==p.revision)throw new Error('该错误来自旧预览，请刷新当前版本再检查。');
@@ -195,7 +197,6 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
     if(closing)throw new Error('应用正在关闭。');
     const controller=new AbortController();let finish;controller.finished=new Promise(r=>{finish=r;});jobs.set(id,controller);let task;
     try{task=await createTask(store,project,prompt,previous);}catch(e){jobs.delete(id);throw e;}
-    const timeout=setTimeout(()=>{if(!controller.publicationStarted)controller.abort(new Error('timeout'));},Math.max(1,LIMITS.milliseconds-(task.budgetUsedMs||0)));
     res.status(200).set({'Content-Type':'application/x-ndjson; charset=utf-8','Cache-Control':'no-store'});res.flushHeaders();
     const redact=s=>safeText(s,config.apiKey),textOutput=textRedactor(config.apiKey);let checkpoint=Promise.resolve();
     const emit=event=>{if(event.type==='status'){checkpointBudget(task);task.phase=redact(event.text).slice(0,500);task.updatedAt=Date.now();task.events.push({text:task.phase,time:task.updatedAt});task.events=task.events.slice(-40);checkpoint=checkpoint.then(()=>store.save(project)).catch(e=>{controller.abort(new Error('checkpoint-failed'));throw e;});checkpoint.catch(()=>{});}if(event.type==='text'){const text=textOutput.push(event.text);if(text&&!res.destroyed)res.write(JSON.stringify({type:'text',text})+'\n');return;}const tail=['done','error'].includes(event.type)?textOutput.flush():'';if(!res.destroyed){if(tail)res.write(JSON.stringify({type:'text',text:tail})+'\n');res.write(JSON.stringify(safeValue(event,config.apiKey))+'\n');}};
@@ -203,8 +204,8 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
       project.messages.push({role:'user',text:prompt,time:Date.now()});await store.save(project);
       const done=await agent({store,project,config:{...config},prompt,signal:controller.signal,emit,build,task,onBudgetCheckpoint:async()=>{await checkpoint;controller.signal.throwIfAborted();await store.save(project);},beforeCommit:async()=>{await checkpoint;controller.signal.throwIfAborted();},onPublish:()=>{controller.signal.throwIfAborted();controller.publicationStarted=true;}});
       await checkpoint;controller.signal.throwIfAborted();controller.publicationStarted=true;checkpointBudget(task);task.state='completed';task.phase=done.verification?.state==='passed'?'所列实际功能检查通过':'答复已完成';task.resumable=false;task.updatedAt=Date.now();await store.save(done);emit({type:'done',project:store.public(done)});
-    }catch(e){await checkpoint.catch(()=>{});checkpointBudget(task);const reason=controller.signal.reason?.message;task.state=controller.signal.aborted?(reason==='user-stop'?'stopped':'interrupted'):'failed';task.reason=reason||e.code||'error';const budgetExhausted=/-budget-exhausted$/.test(task.reason)||reason==='timeout'||e.name==='TimeoutError';task.resumable=!budgetExhausted;task.phase=task.state==='stopped'?'用户主动停止；不会自动继续':task.state==='interrupted'?'制作中断，可核对源码后继续':'制作失败，可核对源码后继续';if(budgetExhausted)task.phase='本任务预算已耗尽，未完成；请核对结果后显式提交新需求';task.updatedAt=Date.now();const message=controller.signal.aborted?task.phase+'，保留上一个可用版本。':redact(e.message);project.messages.push({role:'assistant',text:'本次制作未完成：'+message.slice(0,1800),time:Date.now()});await store.save(project);emit({type:'error',text:message,project:store.public(project)});}
-    finally{clearTimeout(timeout);jobs.delete(id);finish();if(!res.destroyed)res.end();}
+    }catch(e){await checkpoint.catch(()=>{});checkpointBudget(task);recoverVerificationInFlight(task);const reason=controller.signal.reason?.message;task.failureType=reason==='user-stop'?'user-stop':e.failureType||(e.code==='checkpoint-failed'?'external':e.code==='no-progress'?'no-progress':'runtime');task.state=controller.signal.aborted?(reason==='user-stop'?'stopped':'interrupted'):'failed';task.reason=reason||e.code||'error';task.resumable=true;task.phase=task.state==='stopped'?'用户主动停止；草稿已保留，不会自动继续':task.state==='interrupted'?'制作中断，可核对草稿并继续':e.code==='no-progress'?'制作暂停：相同错误反馈后仍无变化；草稿已保留，可核对后继续':'制作失败，草稿已保留，可核对后继续';task.updatedAt=Date.now();const message=controller.signal.aborted?task.phase+'，保留上一个可用版本。':redact(e.message);project.messages.push({role:'assistant',text:'本次制作未完成：'+message.slice(0,1800),time:Date.now()});await store.save(project);emit({type:'error',text:message,project:store.public(project)});}
+    finally{jobs.delete(id);finish();if(!res.destroyed)res.end();}
     }finally{preparingRuns--;}
   }));
   app.post('/api/projects/:id/stop',(req,res)=>{const job=jobs.get(req.params.id);if(job?.publicationStarted)return res.status(409).json({error:'版本已开始保存，无法停止；请等待结果。'});job?.abort(new Error('user-stop'));res.json({ok:true});});

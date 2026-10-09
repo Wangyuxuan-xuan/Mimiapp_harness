@@ -141,3 +141,39 @@ B 检查实际代码、执行相称的独立验证，不能仅据 C 汇报宣称
 - 外部阻塞：真实商业模型需正常授权输入，未提取旧密钥/调用费用；微信模拟器/真机实际运行需后续环境及账号条件，未连接历史9420服务。保留未验证，不记HARNESS-001整体完成。
 - 正在执行：工程与QA产品/测试运行已结束，B整理三份最终说明并按明确清单提交/正常同步；此后由A维护总台账。无永久后台执行承诺。依赖、stage、release、临时报告不上传，只源码/可复现入口与说明进入Git。
 - 下次恢复入口：TASKS、本工作包、HARNESS-001-QA.md、docs/harness-implementation.md与r3 manifest；现有报告保留在本机test-results，远端fresh需按脚本前提准备新隔离fixture。B继续负责人；模型/微信条件由A汇总，不让用户搬运内部消息。恢复先核对实际Git/产物，不重复已有效编译/测试。
+
+### 用户真实模型二维码流程续派（2026-10-09 13:44 后，北京时间）
+- 授权证据：A聊天01a11e93-220d-7ba1-bc51-23007e5621e4直接用户turn01a11f30-d139-7b01-86a2-a50f734ba9fb已由B读取核实。用户已在实际应用配置模型，要求真实end-to-end生成/预览/修改/交付全流程，不再以离线限定证据判总体完成；补充需求“做一个输入文字就能生成二维码的小程序”与625/441数量错误。
+- 当前实际服务：只读进程路径/端口确认r3 exe主进程60072，主API127.0.0.1:54526、preview54525；应用bootstrap公开字段model=deepseek-flash/provider=deepseek/hasKey=true，空闲。未读settings/凭据文件、进程内存/命令行或提取/打印/转移APIKey；HTTP应用访问token仅请求中使用，不落盘/输出。禁止停止/重启该已配置服务。
+- 原现场：项目123，id a7245741-6cec-42cb-af42-203aa62ea2bd，revision1/readytrue，task failed/error/attempts1/toolCalls14/build1/verifyAttempts5；最后脱敏助手摘要“功能检查未通过：数量不符：实际625；期待441”。只读不覆盖/删除，不把旧可用revision1冒充生成成功；625=25²/441=21²仅合法QR版本变化线索，需查真实模块/选择器/解码。
+- 正在执行归属：B定位现场并汇总；C /root/harness_engineer重新接手唯一产品写入资格，目前先只读诊断预算/检查/失败反馈与SDK/QR复用；QA /root/harness_qa独立准备并唯一操作真实模型，通过现有应用接口创建新项目QA真实二维码-20261009，不用原项目。各自记录文件归属不变，A总台账不纳入B/C提交。
+- 验收：真实配置模型生成→新应用真实预览→截图像素解码严格等于短中文/长文本输入→连续业务修改后再解码并保留旧版→空输入反馈→导出ZIP源码/微信结构与版本摘要对应；失败反馈修复同链有限复验。text/count与编译不是二维码功能验收；不简单把441改625或放宽为有图案。
+- 复用：原PI0.99.1会话/customTools/预算保留，Taro保留；QA已装jsQR1.4 Apache2与PNG/Playwright截图直接复用，官方https://github.com/cozmo/jsQR；若需生成器优先官方qrcode-generator MIT候选https://github.com/kazuhikoarase/qrcode-generator，UTF8原生模块能力待实际核对，不先自造随机网格/引新框架。
+- 资源/边界：现有40工具/3编译/3检查/10分钟每任务及SDK重试上限不取消；先一次新项目生成，失败先诊断再有限修复，不无限模型调用。用户授权使用已有配置，不买服务/新订阅/新增账号/发布/微信迁移；不转移模型Key到新服务。若修复需新服务/重输模型，只具体上报并继续其它诊断。
+- 恢复：先TASKS/本工作包/QA报告与实际应用接口空闲状态。B继续负责人；模型调用由QA唯一执行、代码写入C唯一，保护用户原现场；尚未开始的调用不称已运行。
+
+### 14:00恢复实际状态与范围内接续（2026-10-09，北京时间）
+- A自动跟进发现B中断/notLoaded，非用户停止。B核对自身D:/app git正常、读写可用，无仓库损坏证据。旧子代理live已空，实际新建C /root/harness_engineer_resume与独立QA /root/harness_qa_resume；C仍唯一代码writer，不同时另派。
+- 原QA真实run已结束失败，不再后台运行：project1616710e-213e-441e-9d91-f6f1da2a1a37/task0d850301... failed，20工具/build1/verifyAttempts8，最后fill(.text-input)命中taro-input-core非editable。rev仍1初版，verification null；失败draft被清理，API仅初版源码，不能拿初版当模型生成或扫码通过。旧SSE记录running是中断日志，QA另存恢复状态，不篡改旧失败。
+- C接续已有budget改动，实际检查最多3、拒绝另计，用PI原生非阻塞abort并持久budget reason；旧第4/5等调用被拒但计数累加、SDK继续工具错误循环、最后只报旧count/fill错误已定位。Taro host仅唯一内部editable填写，多输入明确拒绝；QR受限截图1–1024像素、PNG/jsQR像素严格等值，不能用gridcount替代，既有CSP/脱敏/次数预算保留。
+- 独立QA新定向5/5通过：真实已编译Taro Input host操作、歧义拒绝、有效QR精确payload、错payload拒绝、伪网格拒绝；PI预算独立2/2第三次可成功/第四请求不执行并明确预算原因/无新版。历史PNG仅工具fixture，不证明当前真实模型QR已生成。本轮不重复旧33项/三类构建。
+- 继续实质工作：C获准最小只读模板QR生成资源，原样复用已装qrcode-terminal内Arase MIT纯算法+标准UTF8适配（不Node Buffer）、固定受控relative入口；模型不得编辑vendor/开放Node。核对vendor纳入不可变源码摘要/版本回放/ZIP、legacy兼容；一次新隔离H5+Weapp与中文长文/纠错级别截图解码相称验证。不开新框架、不自造QR算法、不下载新库。
+- 当前app54526仍hasKey=true，但仍r3旧实现；禁止改其资源/重启/读取或转移Key。新版本模块需正常加载后才能真实验收，模型正常UI配置条件将在可审查新包到位后交A协调；这不是沿用“用户未配模型”为停止理由，当前源码修复/生成支持/独立QA继续。QA唯一后续模型操作者，现不重复run。
+- 14:09补验：C唯一新隔离QR模板H5+Weapp及官方WXML/WXSS实际编译通过，但首次UI在Taro host attached/internal input尚未创建时误判0。旧已编译fixture通过不能覆盖此hydration竞态，独立QA已指出；C限定4秒等待内部editable、仍拒多输入，并复用同一次产物，不重编译。长文本需>=100字且实际值未截断，当前原fixture约90字不足，等级仅纯适配像素或后续真实模型修改，不能扩大Taro等级结论。
+- 独立资源实测4/4：核心10文件原样/许可来源、12只读resource模型写拒/唯一adapter进口、三版snapshot/restored完整源码一致且历史保留、实际API导出ZIP逐源码bytes匹配含MIT许可且无settings/sessions。隔离假编译夹具只证明资源/导出，不替代真实编译/模型；legacy无vendor首次补模板边界明确。仍未真实模型新版本验收，不记录总完成。
+- 14:13实际截图未通过已复现：C作者fixture混inline真实px与Taro转换CSS设计单位，容器145px但module/quietzone被放大裁切，二维码图片无法解码。QA独立DOM/截图同证，不宣称编码模块错或功能通过。B批准唯一额外仅H5针对作者fixture统一尺寸来源，不重Weapp、保留首失败，不调decoder门槛；短中文/长>=100字实际值无截断/empty由QA重验。真实模型新版本仍待运行，工具变更不冒充model已成功。
+
+### 新版本有限打包接续（2026-10-09，北京时间）
+- 产品修复提交1cbf5ce794750a95feb4aa704ef1a61455aea991，明确24文件，不含A台账/B/QA记录或用户数据。vendor核心10文件保留上游原样（包括原有空白）；其余改动diffcheck通过。B独立相关回归7/7：写入边界、源码版本恢复、M3通过/陈旧/失败绑定、断线继续/停止恢复；不重复全量或三类编译。
+- QA同一修正手写Taro H5产物在375×720和1280视口短中文/107字符实际未截断长文/空反馈3/3均通过；纯adapter四等级4/4、资源/版本/导出4/4。作者120/155字失败和首次裁切证据保留；当前不是模型全流程成功，也不宣称任意长文/1000 maxlength能力已验收。
+- C /root/harness_engineer_resume 已接手唯一r4包，限定一次新包/30分钟，脚本25分钟界限；固定新stage .package-staging-harness-20261009-r4、新output release-harness-20261009-r4，不覆盖旧r3。manifest递归固定electron/server/templates/agent-skills/package.json实际包与stage逐文件hash，并记录实际jsqr/pngjs版本；不扫描用户配置/auth/data。
+- QA /root/harness_qa_resume 接手新包离线资源和解码依赖加载/复用已编译fixture检查，再启动隔离r4 exe与新工作区/新端口。旧r3服务60072保持运行，不读取/转移Key或覆盖原项目。具体新包先可审查，再由A引导用户在新窗口正常接口设置；QA唯一新真实模型操作者，尚未再次调用模型。
+- 下一步：实际包交接→独立离线检查→安全新窗口就绪→正常配置后真实模型自然需求生成、手机短长文本像素解码、业务修改、旧版保留、导出摘要检查。阶段通过/提交不记总完成；B继续负责人，A维护唯一总台账。
+- B独立读取手机报告补充边界：107字loc截图宽385，超过375视口；区域像素可解码不等于整图在手机屏幕内。已通知QA补范围说明，未来真实模型必须另查二维码boundingBox完全在375×720可见范围及viewport截图，不能仅locator截图算手机布局验收。不重复旧夹具编译。
+- 正常git push origin main被自动审批拒绝，理由为不能确认具体GitHub目的地/完整源码上传授权。B未绕过、未再push；A核对原用户指定仓库原文但尚无更明确本次上传授权，将具体同步审批与新窗口配置合并由A协调。当前1cbf5ce仅本地提交，包与独立QA继续，不受此阻塞影响。
+- r4于14:24开始，主体打包和1113项依赖修补完成后manifest拒绝。B/C独立确认package.json唯一JSON差异是electron-builder删除scripts，其余生产字段/依赖完全相同。最小脚本修复55c5087e084ef064012b69f72236783124474e20允许仅标准删除scripts的深相等，并可finalize-only已有物理目录且不覆盖manifest；未重新Vite/builder/repair，不修改包资源。r4实际源码基线保留1cbf5ce，finalizer另55c5087，两个不能混称同一编译源码。C正在唯一已有产物生成清单，后交独立QA。
+- r4 manifest实际生成完成，B独立逐38项包内rawHash核对全部匹配；baseCommit=1cbf5ce794750a95feb4aa704ef1a61455aea991，finalizerSourceCommit=55c5087e084ef064012b69f72236783124474e20，decoderVersions jsqr1.4.0/pngjs3.4.0。exe D:/app/release-harness-20261009-r4/win-unpacked/Sprout Studio.exe，需整个win-unpacked。尚不以文件存在判可创作交付，QA实际包内加载及隔离新exe验收已接手，C执行结束不视为运行中。
+- QA实际新包独立离线与真实exe启动passed，report test-results/qa-r4-offline-report.json及test-results/qa-r4-launch-report.json；38rawhash/Git归一1cb对应、生产package只标准去build/devDependencies/scripts、12vendor完整，包Electron38.8.6/Node22.22实际导入verify与375旧手写H5短文/107长文/空反馈通过，只decoder兼容不算模型/整图手机可见。
+- 新窗口已就绪：title“小芽 · r4 真实验收（新模型配置窗口）”，PID14572，API http://127.0.0.1:58362 / preview58361，隔离D:/app/test-results/qa-r4-wazkY0/{user-data,workspace}，明确非模型fixture90bad993…，bootstrap hasKey=false/initialError空。安全空设置截图qa-r4-settings-empty.png由B实看无Key；输入后不截密码或读值。旧r3未动。
+- 当前模型流程没有运行，等待用户在该新窗口正常配置并保存接口（不聊天发Key）；A已收到具体入口/批准Git上传问题。QA维护连接session34143保留新exe，不是模型作业或永久后台承诺。输入就绪由A通知B，B复用QA唯一操作者继续自然需求新项目→120纯中文实际值→375×720 viewport完整图像解码→业务修改→旧版保留→ZIP，不以非模型fixture交付。
+- 恢复入口：本工作包/QA记录/r4 manifest；先核对新PID和bootstrap hasKey公开布尔，若新窗口已退出需新正常配置，不提取旧Key。B继续唯一负责人；模型未就绪不反复测试或扩大范围。Git上传阻塞仍由A取得具体授权，本地产品1cbf5ce与清单脚本55c5087均保留。

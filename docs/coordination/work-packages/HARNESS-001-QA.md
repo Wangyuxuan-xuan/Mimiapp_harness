@@ -153,3 +153,63 @@ QA-DESKTOP-02在“本地包依赖版本错误→所测计算应用包内H5编�
 本续派QA独立验收已结束：r3 Windows解压目录版启动/实际新H5编译与交互/保存中正常退出重开通过；恢复窄修源码门控及包资源绑定通过；三类业务Weapp源码与官方产物核查通过。报告以上精确版本与范围为准，产品代码、测试源码、打包脚本、总台账、Git暂存/提交均由QA保持未改；临时脚本/报告不上传。B继续负责整体交付和明确清单提交/同步，A维护当前台账。
 
 本轮未做真实商业模型开放需求与自主修复、模型执行中关闭恢复、微信模拟器/真机交互、包内Weapp编译、正式安装器或分发；不将限定验收表述为整个HARNESS-001完成。恢复先读TASKS.md、B工作包、本QA报告与8076源码；新机没有本机临时报告时用已提交脚本及本报告的明确流程重建新夹具，不读取旧密钥或旧服务。QA新桌面/编译进程已结束，无额外后台唤醒承诺；当前无需新增测试或重复编译。
+
+## 真实模型二维码验收恢复（2026-10-09，北京时间）
+
+独立 QA 由 `/root/harness_qa_resume` 接替中断的 `/root/harness_qa`；仅写本 QA 记录与 test-results 临时脚本/报告，产品代码由 `/root/harness_engineer_resume` 唯一写入。授权以 TASKS/HANDBOOK 和 B 已核实的 A 直接用户指示为准。本阶段没有再次发起模型任务、覆盖用户 123 项目、读取凭据、重启已配置服务。
+
+已只读核对实际 API `127.0.0.1:54526` 的 QA 项目 `1616710e-213e-441e-9d91-f6f1da2a1a37`：任务 `0d850301-9afc-428d-b8b6-decdc4e6b5bc` 已 failed/reason=error，attempts=1/toolCalls=20/buildAttempts=1/verifyAttempts=8；可用版本仍为 revision1。其公开事件最后显示第二轮双端编译及官方产物检查通过；前面 fill('.text-input') 实际命中 taro-input-core 外壳而失败。旧 qa-live-qr-run-report.json 停在 running 为流式读取中断记录，不能当作仍在执行。
+
+公开 files 接口返回的仅为原空白初版三文件（含“你的想法，从这里开始”）。没有已发布新二维码源码或最终失败检查计划，不能拿原空白页宣称二维码生成、预览或解码通过；失败 draft/最后检查计划待产品诊断确认是否可恢复。旧失败证据保留，不改写为成功。
+
+最短后续入口：C 修复真实 Taro host fill 定位、实际检查预算及二维码截图语义断言后，QA 先在新隔离目录对真实 Taro 组件、有效二维码/伪图案/错误内容、三次检查上限做独立相称复验；随后等 B 确认新版本及正常配置接口，QA 唯一发起有限真实模型验收，短中文/长文本解码严格等于输入、空输入反馈、业务修改后再解码、旧版保留与导出版本对应。当前未进行后续真实模型调用，未承诺后台持续运行。
+
+### 新工具与上限定向独立复验
+
+test-results/qa-qr-tools-report.json passed=true，五项均满足预期；verify.mjs 当次原始 SHA256=75de12d122298cf17efaeb056e82948fdea9a37dbbd50c243ac1b396868ec7dd。独立脚本只写新 qa-qr-tools-* 临时目录，随机端口与真实 Edge，没有模型调用/重编译：
+
+- 复制先前真实 Taro H5 清单业务产物，选择实际 taro-input-core 外壳填写中文，再提交，业务结果精确为1；新版能进入组件唯一真实输入框，非静态仿造 Input。
+- 包含两个输入框的非 Taro 容器明确失败，没有随意选第一个。
+- 历史不可变二维码 PNG 仅作截图解码工具夹具，其 SHA 保存在报告；浏览器实际 img 截图按100个a严格解码通过；同一有效二维码期待错误文字明确拒绝；伪黑白网格明确无法解码而拒绝。此夹具不证明新真实模型任务已生成二维码，历史版本仅用于避免重复生成测试图案。
+- QA另独立运行 node --test tests/agent-budget.test.mjs 2/2并核对断言：第三次检查可成功完成；第四次请求不再实际执行 verify（实际执行3次），中止PI，持久任务failed/reason=verification-budget-exhausted且保留旧revision，最终不是done。使用本地假模型/替身编译，不调用已有商业模型。
+
+剩余：新源码/新可用应用接口及正常模型配置交接后，由 QA 唯一进行真实生成→短中文/长文截图解码→空输入→连续修改→版本保留→导出对应。当前这一真实业务链仍未验收；不得用上述工具夹具补作成功。
+
+### 固定二维码编码资源专项（新增，真实业务链尚未通过）
+
+QA独立 `qa-qr-resource-report.json` passed=true：模板12固定资源纳入可读源码；10个编码核心逐字节等于本地 qrcode-terminal 的 Arase 原始 MIT 子库，许可保留；模型不能写任何固定资源，仅允许页面受控相对导入 vendor/qr/index.js，直接导入核心/越界/查询参数均拒绝。新隔离 Store 夹具三版本 commit/restore 精确回放完整快照且后续历史保留，真实 export API ZIP 逐源码字节对应含 MIT LICENSE，未含 settings/sessions。此项用替身编译，不宣称真实双端编译或真实模型通过。兼容边界：旧版本缺vendor时首次draft会补新模板资源；之后新快照保存vendor。不能把旧初版三文件与新十五文件宣称绝对相同。
+
+C唯一新二维码兼容fixture已真实 Taro H5/Weapp 编译，`.test-data-qr-vendor-li5TMw`。第一次 fill因Taro内部输入框尚未hydrated而返回0；QA指出等待外壳attached即立即count的竞态，C已增加有限等待，尚需最终定向复验。随后 QR screenshot仍不能解码。
+
+QA独立实际浏览器DOM和像素检查 `qa-qr-vendor-first-report.json`、`qa-qr-vendor-first.png` 证实布局错误：二维码容器inline width/height=145px，但Taro编译CSS使20px padding变实际40px、5px cell变10px；21列需210px，145px容器截图严重裁切（实际截图仅左上定位角与部分图案）。不是对正确编码的误判，不能调整解码器或期望以宣称通过；C/B收到最小同单位尺寸修复线索。此fixture当前功能失败，后续重新构建仅B决定，相称修复后QA重验，不自行无限编译。原首次失败证据保留。
+
+### 修正手写Taro产物独立功能复验
+
+B允许C一次额外H5修作者fixture，把二维码全部尺寸改同源inline样式；未重复Weapp。QA对同一刚编译产物独立实际操作，qa-qr-vendor-report.json（1280×900/deviceScale2）与 qa-qr-vendor-mobile-report.json（实际预览375×720/deviceScale1）各3/3通过：短中文“一二三”严格截图解码版本1；107字符中文与emoji严格检查实际inputValue完全相同、再解码严格等于输入（版本13）；空输入提示“请先输入文字”。sourceDigest/H5 index摘要与时间均在独立报告，真实像素PNG保留。没有重新编译或调用模型。
+
+范围明确：此为手写Taro H5固定M等级夹具，不是新真实模型生成项目；原Weapp编译对应修样式前源码，不能据本次H5宣布当前源Weapp功能或手机真机通过。C另155字默认输入截断与120字解码失败报告仍保留，不宣称所有长文成功、1000maxlength已在此产物生效或不需渲染尺寸预算。107字成功只是本明确样例通过，后续真实模型业务仍须实际长文测验。
+
+纯固定适配器另有独立 qa-qr-levels-report.json 4/4：原模板UTF8 wrapper仅Babel转换模块导入以便在新CJS夹具运行；107字符中文+emoji在L/M/Q/H各实际HTML像素截图严格解码，合法版本11/13/16/19、模块61/69/81/93。不等于Taro已编译纠错级别控件操作或真实模型自主修改证据。
+
+最终工具变化：fill增加最多4秒等待Taro内部输入框hydration，仍只允许唯一子输入；verify默认viewport375×720并在通过/失败结果中记录viewport/已成功qrChecks。旧5项定向报告是变化前默认1280，不冒充全覆盖最终文件；最终verify raw SHA256=4e11ce2f5d941a203f4852250a76739c09e41bdee29d2d17fd997dfe8e6ebc3e。资源4/4、预算2/2有效证据已按范围复用，不再次繁重运行。
+
+当前下一必需步骤由B交接新可用包及正常配置接口后QA唯一完成真实模型生成、真实二维码像素解码、连续业务修改、旧版本保留与导出；旧r3真实项目失败保留，QA没有重发其run。
+
+
+### 手机可见范围补充（B复核发现，保留原解码passed含义）
+
+qa-qr-vendor-mobile-report 的107字二维码定位截图宽385px，大于375px viewport。Playwright locator.screenshot可截取溢出的整容器，因此严格解码成功只证明该容器像素，不证明用户在手机预览内能看全二维码。前文“两viewport通过”限定为输入/定位截图解码，不能算手机布局验收；不改写既有passed和首次失败证据。新包复用此fixture也仅用于包内解码器/模块兼容，不用它证明整图可见。
+
+后续真实模型项目：长度120的纯中文，先严格检查实际inputValue等于完整原文，再检查实际可见二维码boundingBox满足x/y非负且x+width<=375、y+height<=720（允许先滚到可见位置），保存viewport截图证据并从可见像素解码严格等原文。超出可见范围必须反馈渲染缺陷，不通过换大viewport、放宽文本或只截溢出locator掩盖。
+
+## r4新包离线与真实窗口独立验收（2026-10-09 14:31 北京时间）
+
+独立结果 qa-r4-offline-report.json / qa-r4-launch-report.json 均 passed=true。新实体包 release-harness-20261009-r4/win-unpacked/Sprout Studio.exe；manifest绑定产品1cbf5ce794750a95feb4aa704ef1a61455aea991，finalizer55c5087e084ef064012b69f72236783124474e20。38固定资源逐实际rawSHA匹配manifest，且对应Git内容仅CRLF归一后完全相等。包package.json与产品Git仅扣除build/devDependencies/scripts三生产变换后deep完全相等，未放宽其它字段；rawSHA=0aa784f22df9236022321a587d6c3b98fd1696fd54d369b68504c901284abfe4。decoder包实际jsqr1.4.0/pngjs3.4.0，12固定vendor资源完整。
+
+QA实际使用新包exe的Electron38.8.6/Node22.22导入包内Store/verify，在新workspace发布明确标题“QA固定资源兼容夹具（非模型）”的旧手写编译H5，仅复用，不再次编译。包内真实verify默认375×720完成短中文/107字符中文+emoji二维码严格内容及空反馈通过，版本1/13。此为解码器/资源运行兼容，不是新模型生成/新编译/微信交互/手机整图可见证据；107字loc图385px溢出边界仍适用。旧较长fixture失败和原用户123项目均保留。
+
+随后实际启动同一新包exe，隔离root D:/app/test-results/qa-r4-wazkY0，workspace与user-data为其子目录。新进程PID14572，主API http://127.0.0.1:58362，preview http://127.0.0.1:58361；实测isPackaged/appPath/exe/userData路径对应新包，renderer nodeIntegration=false/contextIsolation=true/sandbox=true。公开bootstrap hasKey=false，initialError为空。已打开正常“模型与设置”，标题标记“小芽 · r4 真实验收（新模型配置窗口）”，安全截图qa-r4-settings-empty.png只拍了尚未输入的空密码框。
+
+新exe窗口保留供用户正常配置，工具session34143仅保持该新窗口连接，未执行模型任务；不宣称QA在后台制作。旧r3服务54526及其Key未停止/重启/读取/转移，新userData的settings/auth文件也未读取。应用访问token仅请求内存使用，未写报告或输出。之后用户输入后禁止截图密码框或读取其值；只通过公开hasKey确认输入条件。
+
+下次入口：B/A确认用户在此新r4窗口正常保存模型配置后，QA通过新API公开状态核对空闲，唯一发起新独立真实模型项目。先120纯中文实际输入完整/二维码在375×720内全图可见并viewport截图解码，再连续业务修改、空反馈、版本保留和ZIP源码/微信产物对应。未输入时此真实模型分支具体等待正常配置，不将r4离线验收宣布全任务完成。

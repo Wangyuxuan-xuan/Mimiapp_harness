@@ -6,6 +6,7 @@ import { chromium } from 'playwright-core';
 import jsQR from 'jsqr';
 import {PNG} from 'pngjs';
 import {createHash} from 'node:crypto';
+const isEmptyFeedback=value=>/请输入|请先输入|输入不能为空|内容不能为空|内容为空|不能空白|请填写/.test(value);
 
 // This is a narrow acceptance profile, not a general interpretation of every
 // product requirement. Discussion alone never invokes a delivery profile.
@@ -34,14 +35,28 @@ export function validateVerificationPlan(steps,requirements={}){
    if(/[\u3400-\u9fff]/.test(s.value)&&s.value.length<=20)short=true;
    if(s.value.length>=120)long=true;
   }
-  if(lastFill===''&&clicked&&((s.action==='text'&&/请输入|输入不能为空|内容不能为空|内容为空|不能空白|请填写/.test(s.value))||(s.action==='count'&&s.value===0&&qrSelectors.has(s.selector))))empty=true;
+  if(lastFill===''&&clicked&&((s.action==='text'&&isEmptyFeedback(s.value))||(s.action==='count'&&s.value===0&&qrSelectors.has(s.selector))))empty=true;
  }
  if(!short||!long||!empty)throw new Error('文字二维码验收须在同一次检查内包含：短中文输入→生成→解码、至少120字长文输入→生成→解码、空输入→生成→明确提示或二维码数量为0；不能用格子或标题断言代替。');
 }
 export function validateVerificationEvidence(verification,steps,requirements={}){
  if(verification?.state!=='passed')return;
  if(requirements.profile==='text-qr')for(const [i,s] of steps.entries())if(s.action==='qr'&&!verification.qrChecks?.some(q=>q.step===i+1&&q.data===s.value&&q.imageDigest&&q.viewportImageDigest&&q.fullyVisible===true))throw new Error('二维码检查缺少与输入绑定的实际截图解码证据。');
+ if(requirements.profile==='text-qr'&&!emptyAssertions(steps).some(a=>verification.emptyChecks?.some(e=>e.step===a.step&&e.fillStep===a.fillStep&&e.clickStep===a.clickStep&&e.selector===a.selector&&e.action===a.action&&e.expected===a.value&&e.transition===true&&e.before&&e.after&&(a.action==='text'?e.after.visible&&e.after.text.includes(a.value)&&(!e.before.visible||!e.before.text.includes(a.value)):e.before.count>0&&e.after.count===0&&verification.qrChecks.some(q=>q.selector===a.selector&&q.step<a.fillStep)))))throw new Error('空输入检查缺少本次输入/提交引起的可见反馈变化或已验证二维码消失的证据。');
 }
+
+function emptyAssertions(steps){
+ if(!steps.some(s=>s.action==='qr'))return [];
+ const qrSelectors=new Set(steps.filter(s=>s.action==='qr').map(s=>s.selector));
+ let fillStep,clickStep;const assertions=[];
+ for(const [i,s] of steps.entries()){
+  if(s.action==='reload'||s.action==='fill'){fillStep=s.action==='fill'&&s.value===''?i+1:undefined;clickStep=undefined;}
+  if(fillStep&&s.action==='click')clickStep=i+1;
+  if(fillStep&&clickStep&&((s.action==='text'&&isEmptyFeedback(s.value))||(s.action==='count'&&s.value===0&&qrSelectors.has(s.selector))))assertions.push({...s,step:i+1,fillStep,clickStep});
+ }
+ return assertions;
+}
+async function elementState(loc){const count=await loc.count();const visible=count===1&&await loc.isVisible()&&await loc.evaluate(el=>{for(let node=el;node;node=node.parentElement){const style=getComputedStyle(node);if(Number(style.opacity)===0||style.visibility==='hidden'||style.display==='none')return false;}return true;});return {count,visible,text:count===1?await loc.innerText():''};}
 
 // Taro's public Input selector names a host element. Only resolve a unique
 // editable child inside that host; never silently pick a different form field.
@@ -87,8 +102,8 @@ async function assertQr(loc,expected,signal,page){
 export async function verifyPreview(dir,steps,{signal,initialStorage={},viewport={width:375,height:720}}={}){
  if(!Number.isInteger(viewport.width)||viewport.width<320||viewport.width>1280||!Number.isInteger(viewport.height)||viewport.height<320||viewport.height>1024)throw new Error('检查视口大小无效。');
  validateVerificationPlan(steps);
- signal?.throwIfAborted();let storage={...initialStorage};const app=express();app.use((req,res,next)=>{res.setHeader('Content-Security-Policy',"default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'none'; media-src 'self'; base-uri 'none'; form-action 'none'");next();});app.get('/',async(req,res)=>{const html=await fs.readFile(path.join(dir,'dist/h5/index.html'),'utf8');res.type('html').send(html.replace('<head>','<head>'+storageBridge('verification',storage,0)));});app.use(express.static(path.join(dir,'dist/h5')));const server=await new Promise(r=>{const s=app.listen(0,'127.0.0.1',()=>r(s));});let browser;const errors=[];let index=-1;const qrChecks=[];
- try{browser=await chromium.launch({channel:'msedge',headless:true});const abort=()=>browser.close().catch(()=>{});signal?.addEventListener('abort',abort,{once:true});try{const page=await browser.newPage({viewport});await page.exposeFunction('__sproutStorage',values=>{storage=values;});await page.addInitScript(()=>window.addEventListener('message',event=>{if(event.data?.type==='sprout-storage')window.__sproutStorage(event.data.values);}));page.setDefaultTimeout(4000);page.on('pageerror',e=>errors.push(e.stack||e.message));await page.goto(`http://127.0.0.1:${server.address().port}`,{timeout:15000});for(const [i,s] of steps.entries()){index=i;signal?.throwIfAborted();if(s.action==='reload'){await page.waitForTimeout(100);await page.reload();continue;}const loc=page.locator(s.selector);if(s.action==='click')await loc.click();if(s.action==='fill')await fillEditable(loc,String(s.value));if(s.action==='qr')qrChecks.push({step:i+1,...await assertQr(loc,s.value,signal,page)});if(s.action==='text'){let actual='';for(let poll=0;poll<80;poll++){actual=await loc.innerText();if(actual.includes(String(s.value)))break;await page.waitForTimeout(50);}if(!actual.includes(String(s.value)))throw new Error(`步骤 ${i+1} 文本不符：实际 ${actual.slice(0,500)}；期待 ${s.value}`);}if(s.action==='count'){let actual=0;for(let poll=0;poll<80;poll++){actual=await loc.count();if(actual===s.value)break;await page.waitForTimeout(50);}if(actual!==Number(s.value))throw new Error(`数量不符：实际 ${actual}；期待 ${s.value}`);}}await page.waitForTimeout(100);if(errors.length)throw new Error(errors.join('\n').slice(0,3000));return {state:'passed',steps,time:Date.now(),kind:'real-browser',storage,qrChecks,viewport};}finally{signal?.removeEventListener('abort',abort);}}
- catch(e){return {state:'failed',steps,step:index+1,error:e.message.slice(0,3000),runtimeErrors:errors,time:Date.now(),kind:'real-browser',storage,qrChecks,viewport};}
+ signal?.throwIfAborted();let storage={...initialStorage};const app=express();app.use((req,res,next)=>{res.setHeader('Content-Security-Policy',"default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'none'; media-src 'self'; base-uri 'none'; form-action 'none'");next();});app.get('/',async(req,res)=>{const html=await fs.readFile(path.join(dir,'dist/h5/index.html'),'utf8');res.type('html').send(html.replace('<head>','<head>'+storageBridge('verification',storage,0)));});app.use(express.static(path.join(dir,'dist/h5')));const server=await new Promise(r=>{const s=app.listen(0,'127.0.0.1',()=>r(s));});let browser;const errors=[];let index=-1;const qrChecks=[],emptyChecks=[],emptyPlans=emptyAssertions(steps),emptyBefore=new Map();
+ try{browser=await chromium.launch({channel:'msedge',headless:true});const abort=()=>browser.close().catch(()=>{});signal?.addEventListener('abort',abort,{once:true});try{const page=await browser.newPage({viewport});await page.exposeFunction('__sproutStorage',values=>{storage=values;});await page.addInitScript(()=>window.addEventListener('message',event=>{if(event.data?.type==='sprout-storage')window.__sproutStorage(event.data.values);}));page.setDefaultTimeout(4000);page.on('pageerror',e=>errors.push(e.stack||e.message));await page.goto(`http://127.0.0.1:${server.address().port}`,{timeout:15000});for(const [i,s] of steps.entries()){index=i;signal?.throwIfAborted();if(s.action==='reload'){await page.waitForTimeout(100);await page.reload();continue;}const loc=page.locator(s.selector);for(const a of emptyPlans.filter(a=>a.fillStep===i+1))emptyBefore.set(a.step,await elementState(page.locator(a.selector)));if(s.action==='click')await loc.click();if(s.action==='fill')await fillEditable(loc,String(s.value));if(s.action==='qr')qrChecks.push({step:i+1,selector:s.selector,...await assertQr(loc,s.value,signal,page)});if(s.action==='text'){await loc.waitFor({state:'visible'});let actual='';for(let poll=0;poll<80;poll++){actual=await loc.innerText();if(actual.includes(String(s.value)))break;await page.waitForTimeout(50);}if(!actual.includes(String(s.value)))throw new Error(`步骤 ${i+1} 文本不符：实际 ${actual.slice(0,500)}；期待 ${s.value}`);}if(s.action==='count'){let actual=0;for(let poll=0;poll<80;poll++){actual=await loc.count();if(actual===s.value)break;await page.waitForTimeout(50);}if(actual!==Number(s.value))throw new Error(`数量不符：实际 ${actual}；期待 ${s.value}`);}const a=emptyPlans.find(a=>a.step===i+1);if(a){const before=emptyBefore.get(a.step),after=await elementState(loc);const transition=a.action==='text'?after.visible&&after.text.includes(a.value)&&(!before.visible||!before.text.includes(a.value)):before.count>0&&after.count===0&&qrChecks.some(q=>q.selector===a.selector&&q.step<a.fillStep);if(!transition)throw new Error('空输入未引起新的可见错误反馈或已验证二维码消失；常驻提示、隐藏文本或原本不存在的元素不能作为空输入检查。');emptyChecks.push({...a,expected:a.value,before,after,transition});}}await page.waitForTimeout(100);if(errors.length)throw new Error(errors.join('\n').slice(0,3000));return {state:'passed',steps,time:Date.now(),kind:'real-browser',storage,qrChecks,emptyChecks,viewport};}finally{signal?.removeEventListener('abort',abort);}}
+ catch(e){return {state:'failed',steps,step:index+1,error:e.message.slice(0,3000),runtimeErrors:errors,time:Date.now(),kind:'real-browser',storage,qrChecks,emptyChecks,viewport};}
  finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
 }

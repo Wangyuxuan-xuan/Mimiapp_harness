@@ -46,3 +46,11 @@ validateVerificationEvidence(verification, steps, requirements = {}) // passed �
 编译/部分验证器为测试替身，浏览器反例为真实 Edge；没有调用真实商业模型，没有重新执行 Taro 全构建、微信真机或桌面打包。本次是已实现/工程自测，尚待 B 组织独立 QA，不把工程自测当验收。通用 text/count 仍只证明所列断言，不证明任意用户需求全部正确。
 
 恢复：从本分支提交与上述报告接续；B 集成后独立 QA 优先核对统一 route、预算门、正常 UI 停止/恢复及真实生成链。本执行者不合入 main、不 push、不改总台账。
+
+## 独立 QA 空输入误通过的后续修复
+
+独立 QA 在 f371856 的动态短中文/120纯中文实际扫码用例发现：常驻“请输入内容”标签加空输入无操作仍能通过。原失败报告 `D:/app/test-results/studio-002-qa-repair-dynamic.json` 保留，未修改期待。
+
+最小修复没有增加接口或重试预算：verifyPreview 从含 qr 的计划识别空 fill→click→text/count，空 fill 前捕获后续反馈 selector 的可见性、文本和数量；text 必须可见，且从此前不可见/不含期待变为可见含期待。透明祖先也算不可见。count0 必须此前真实存在，且同一 selector 在空输入前已经实际解码，防不存在的容器冒充消失。返回 emptyChecks 的 fillStep/clickStep/step/selector/expected/before/after/transition，统一 validateVerificationEvidence 绑定该证据并复核状态变化。不要求新增错误反馈时删除旧二维码。
+
+真实浏览器针对回归 `tests/verify-empty-feedback.test.mjs` 复用固定 Arase 算法，短中文与120纯中文动态生成均先实际解码；新增错误提示且保留旧二维码通过，常驻提示失败，隐藏提示失败，新反馈但透明失败，已解码容器实际删除通过。相关14项通过后，新增透明场景再运行该文件1/1通过；随后统一计划与实际序列的isEmptyFeedback规则支持“请先输入”，六个动态场景（含新出现“请先输入要生成二维码的文字”合法反馈）最终该文件1/1通过。新报告为本工作树 `test-results/studio-repair-empty-feedback.json`、`studio-repair-empty-followup.tap`、`studio-repair-empty-feedback-final.tap`、`studio-repair-empty-feedback-please-first.tap`。仍待原独立 QA 按原步骤复验；不重复全部回归或 Taro 编译。

@@ -2,6 +2,8 @@
 
 用中文对话制作可交互的微信小程序。桌面工作台使用 Electron，实际制作由开源 PI Coding Agent SDK 执行；Taro 同时生成网页交互预览和微信 JS / JSON / WXML / WXSS 文件。
 
+产品目标是专门制作小程序的 Coding Agent：持续理解需求、执行工具、读取真实错误、自主修复并验证交付。长期微信愿景、当前桌面范围和完成标准见 [产品定位](docs/PRODUCT.md)。工程与 QA 接手时先读该文档及 [任务台账](docs/coordination/TASKS.md)。
+
 ## 启动
 
 Windows 桌面包：打开发布目录中的 `win-unpacked/Sprout Studio.exe`。需要保留整个 `win-unpacked` 文件夹，不能只复制 exe。
@@ -40,7 +42,7 @@ npm run dev
 - 当前允许编辑一个页面、项目内组件及样式；应用内多个视图可用 React 状态切换。完整多路由管理、云数据库、登录、支付、真机调试尚未集成。
 - 右侧明确标为 H5 交互预览，不等同于微信运行时。微信专属 API 和最终兼容性需要在官方工具及真机验证。
 - 找到本机微信开发者工具后，每次微信端构建额外运行官方 WXML/WXSS 编译器。可用 `WECHAT_DEVTOOLS_PATH` 指定安装位置。没有该工具时，仅执行 Taro 编译和产物结构检查。
-- Agent 只开放 `list_files`、`read_file`、`write_file`、`build_preview` 四个工具，不开放终端。预览在独立本机来源运行，不能直接使用编辑器 API。
+- Agent 开放 `list_files`、`read_file`、`write_file`、`build_preview`、`verify_preview` 五个项目工具，不开放终端。预览在独立本机来源运行，不能直接使用编辑器 API。
 - 这是供本机可信使用的 demo，未经过面向恶意生成代码的安全审计，不应公开部署为多用户服务。
 
 ## 测试
@@ -56,6 +58,6 @@ node scripts/verify-weapp.mjs test-results/export-check
 
 前两种开发桌面测试默认连接正在运行的 `http://127.0.0.1:5176`。交互测试会在示例里新增一个带“验证习惯”前缀的条目，执行打卡、统计、刷新与导出。打包版测试启动独立应用。测试记录放在 `test-results`。
 
-`npm test` 包括真实 PI SDK 对本地模拟模型的工具调用测试；这个测试并不代表真实 DeepSeek 已验证。真实 DeepSeek Flash 生成、V4 Pro 继续修改以及生成应用的交互和恢复已另行通过实测。各项证据及官方模拟器剩余限制见 `TEST-STATUS.md`。
+`npm test` 包括真实 PI SDK 对本地模拟模型的工具调用测试；这个测试并不代表真实 DeepSeek 已验证。历史真实模型及官方模拟器证据见 `TEST-STATUS.md`，不能作为最新版本已通过的结论。当前状态见 [任务台账](docs/coordination/TASKS.md)，可重复用户轨迹测试与真实/模拟范围见 [回归说明](docs/studio-regression.md)。
 
 主要依赖：PI Coding Agent SDK 0.99.1、Taro 4.3.0、React 18.3.1、Electron 38.8.6。项目没有把网页 HTML 当作微信小程序导出。

@@ -67,3 +67,89 @@ QA 复用 B/C 已有调研，补读已装 PI 0.99.1 的 docs/sdk.md / package.js
 ## 当前状态与恢复
 
 已完成初版独立审查、四项专项复现、三P1/一P2修复独立复验及三类新增业务修改真实 H5 独立交互复验，均在上述范围通过；对应最终产品提交 `242b6fcd40638bb30723249b1489f4ef578c009e`。QA 报告写入结束，结果交 B；源码/QA文件提交及同步由 B 安排，QA 未触碰暂存或提交。继续负责人 B；真实模型、后续微信编译/交互、真机/安装包与复杂长期任务压力仍待验证，不因本专项通过宣布整个HARNESS-001完成。恢复先读 TASKS.md、B 工作包、本报告与临时复现脚本；本机临时报告不是远端已有证据。若临时文件不在恢复机器，可依据上述明确步骤重建，不需历史用户数据。没有配置后台唤醒，不承诺结束后持续执行。
+
+## 电脑版产物独立 QA 续派
+
+A 于2026-10-09 12:42北京时间续派 B；B 继续派本独立 QA。复用上方四缺陷/业务证据，不重复29项或整套真实编译。C 是唯一产品/打包脚本写入者；QA 只追加本报告和 `test-results/qa-desktop-*` 临时证据。约定最多30分钟、一次打包及至多一次有针对性重打，不下载新依赖、不付费模型、不发布安装/更新或触碰旧用户数据。
+
+### 只读准备与验收设计
+
+- 已读 `electron/main.cjs`、`scripts/package-desktop.mjs`、`repair-package-deps.mjs`、现有 `qr-desktop-cdp.mjs`、`desktop-smoke.mjs`、`packaged-build-check.mjs`。旧 smoke 固定旧 release、端口和未证明隔离的数据目录，不能代替新产物验收。
+- QA 检查时管理 HEAD 为 `02064b3`，后续管理提交会变化；产品核心仍 `242b6fc`，本次桌面入口/打包修复先为 C 工作区，最终提交待登记。已告 B 核对真实提交而不以初始 HEAD 宣称产物版本。
+- 复用 Electron 38 原生 `app.setPath` / `app.getPath` 和 before-quit 生命周期，以及现有 Playwright-core `_electron.launch`；读已安装 electron.d.ts，并核对[官方 app 文档](https://github.com/electron/electron/blob/main/docs/api/app.md)。无需新依赖。不能只凭 Chromium `--user-data-dir` 推断宿主 workspace 已隔离；C 已补 `STUDIO_USER_DATA_DIR` / `STUDIO_WORKSPACE_DIR` 绝对路径入口及正常退出等待 close，QA将实际核对路径。Electron MIT、Playwright Apache-2.0沿用已装版本，兼容性以实际新exe运行验证，未升级。
+- 临时脚本 `test-results/qa-desktop-check.mjs` 先核对新目录 build-manifest、exe及包内 electron/server 哈希与源文件；实际启动新exe，核对 isPackaged、execPath、appPath、userData、随机服务端口和 renderer 隔离。使用新workspace，复制上轮已验收记录应用的真实H5 revision2，预置一条running任务标记；不调用模型、不重新编译。运行标记是模拟持久状态夹具，不能表述为真实模型执行中退出。
+- 实际界面修改长期需求、在已有可用预览新增3和2显示合计5、查看两条版本历史，正常关闭并重新启动同一新数据目录，核对记忆/业务数据/版本持久、中断状态和显式继续入口、不自动重试。尚不点击恢复重新编译，不以旧可用应用产物声称新包编译链已通过。
+
+### 第一次新exe实测与缺陷
+
+- 新产物：`D:/app/release-harness-20261009/win-unpacked/Sprout Studio.exe`；manifest baseCommit=`02064b3`、productBase=`242b6fc`；本机 Electron38.8.6、electron-builder26.15.3。初包exe SHA256=`62c62d170a95aa4a3eb3df05f0d56a3654ab4344f7452e21dea1334afed7100f`，完整资源SHA清单保存在初包manifest和qa-desktop-first-report。QA核对包内 electron/server 文件的SHA256均等于manifest和C当前源文件，实际 isPackaged=true、execPath=此新exe、appPath=此新包resources/app；未拿旧release作替代。未签名exe可能跨包相同，版本绑定主要依据资源SHA与实际appPath，不仅看二进制SHA。
+- QA运行目录：`D:/app/test-results/qa-desktop-r2FMVi`；userData和workspace明确落在此新目录，三个启动轮次随机服务端口，renderer nodeIntegration=false/contextIsolation=true/sandbox=true。正常关闭由 Playwright ElectronApplication.close→app.quit触发，不使用强杀。
+- 基础检查通过：持久running夹具启动被诚实标记interrupted、显式继续按钮可见；界面需求查看/修正保存；已验证记录应用revision2的真实预览新增3和2显示5、两个版本历史可见；正常关闭重开需求、业务storage、旧可用revision、中断/继续状态保留，不自动重试。模型未调用，未重新编译。
+- **QA-DESKTOP-01，P1，保存中的最后数据在正常关闭时丢失**：第二次启动在Electron主进程只为此新workspace的storage.json rename增加一次500ms延迟，确认已进入且尚未完成；真实iframe新增4后显示合计9，立即正常app.quit，第三次启动实际合计仍5。`startStudio.close`只等待jobs，未等待已接受的storageQueues；这不是仅静态推测，真实新exe已有确定复现。
+- 证据：`test-results/qa-desktop-first-report.json`（保留初包失败），`qa-desktop-report.json` 与 `qa-desktop-storage-close.png`；delayedStorageClose expected=`结果：9`、actual=`结果：5`、passed=false。脚本 `qa-desktop-check.mjs`；所有新测试程序已退出。未操作用户数据或旧服务。
+- 已报B/C建议最小修复：关闭时拒绝新存储请求，等待已接受的保存队列完成再退出；在本轮授权的一次针对性重打中验证。此时基础桌面检查已通过，但总体桌面验收未通过，不能宣布新包可靠交付。
+
+### 唯一针对性重打与 QA 复验
+
+- 修复：C 为 storage 在首个 await 前同步登记请求Promise，关闭时禁止新变更请求，等待已接受的 mutation/storage 请求和保存队列，再结束HTTP服务；Electron正常退出等待该 close。QA只读核对登记时机避免 get 与 enqueue 之间的关闭竞态，产品实现仍由唯一 C 写入。
+- 最后一次新产物：`D:/app/release-harness-20261009-r2/win-unpacked/Sprout Studio.exe`；第一次目录未覆盖。QA使用原 `qa-desktop-check.mjs` 的同一触发步骤，新隔离目录 `D:/app/test-results/qa-desktop-uuERjj`，实际启动此新exe三次，server/electron资源SHA与此包manifest及当时源码一致。未重新编译生成应用、未调用模型。
+- 独立结果 `test-results/qa-desktop-report.json` passed=true：实际新exe/包内资源/明确userData/workspace/随机端口/renderer隔离；需求查看修正；旧可用revision2和两条历史；正常关闭重开记忆/业务storage/中断继续入口且不自动重试，均通过。
+- 原P1步骤复验：storage.json rename同样500ms延迟门，关窗前确认进入且未完成，真实预览合计9，正常app.quit后第三次启动实际仍9。`delayedStorageClose.expected=actual=结果：9`、passed=true；**QA-DESKTOP-01 在本限定边界独立验收通过**。第一包9→5失败报告仍保留，不用新成功结果改写历史失败。
+- 两包exe SHA可能同为原Electron程序，资源清单是精确版本证据。第二包实际exe SHA及完整资源SHA由qa-desktop-report保存；最终源码提交待B/C登记。所有QA桌面程序已正常退出。
+- r2对应源码提交：`691d41a`。QA独立从 `git show 691d41a:<file>` 读取此提交的10个manifest资源，与实际包内资源逐项核对内容（不是拿后续server工作区作比较）：Git blob为LF，7个Windows检出文件为CRLF，原始字节SHA因此不同；仅归一化CRLF后内容均完全一致，包内原始字节SHA又逐项匹配r2 manifest。此提交8个明确交付文件已核对。r2 manifest的baseCommit仅指当时管理HEAD，不冒充最终源码commit。
+- 本专项只证明Windows未签名解压目录版（win-unpacked）启动和上述界面/保存范围，没有生成或安装正式安装器；任务恢复状态为预置持久running夹具，不是商业模型执行中关窗。生成应用H5来自先前真实构建，不能据本次预览宣称新包内Taro编译链或微信改版已重新验收。没有第三次打包循环，实际于北京时间12:57附近完成，未超过30分钟约定。
+
+### 后续源码窄竞态（未包含在r2包）
+
+C/B在源码复查发现：恢复任务会await sourceDigest，在该等待期间close可开始；若恢复随后仍注册新任务，退出可能等到任务上限。此时r2对上述桌面原步骤的通过仍有效，但不证明这个新的恢复并发窗口已修复。C另做关闭复查与单项测试，不进行第三次打包。
+
+QA使用独立 `test-results/qa-desktop-resume-close.mjs`（没有引用开发自报2/2），在新隔离数据/随机端口门控摘要读取index.css；close开始后释放读取，HTTP400“应用正在关闭”、agentCalled=false、taskCount=1、原任务仍interrupted、closeFinished=true。`qa-desktop-resume-close-report.json` passed=true，2026-10-09 13:02:40北京时间；编译为夹具、无模型调用。对应窄修提交 `c88db3e`，QA核对当前server/index及该专项测试与提交无差异，源码验收通过。
+
+当前：r2电脑版限定产物独立QA通过，对应源码691d41a；恢复窄竞态源码修复c88db3e已另行独立复验通过，**该窄修未进入r2exe**。真实模型、微信交互、安装器/分发仍保留未验证，不据本项宣称整个HARNESS-001完成。B另派C三类修改版Weapp产物分支，QA仅对新报告、源码摘要和本地官方格式校验做相称核查，不重复编译，不连接历史服务，等待该产物后收尾。
+
+## 三类修改版 Weapp 产物补验
+
+C 在新隔离目录 `D:/app/.test-data-business-weapp-dJS7rC` 对三类已真实H5验收的业务revision2，每类仅一次真实Taro Weapp构建与本地官方WXML/WXSS校验；未调用模型、未启动开发者工具服务/模拟器、未访问账号、下载或发布。`harness-business-weapp-report.json` completed/passed=true，运行时源码提交 `c88db3e4112e090c1dac3c26cdfd6e8c4001489c`。环境为源码Node24.15.0及 `D:/app/node_modules`，**不是r2包内编译**。
+
+QA独立运行临时 `qa-desktop-weapp-check.mjs`、`qa-desktop-weapp-business.mjs`，仅读取新产物，不重复任何编译：
+
+- 三类实际readSources SHA256均匹配先前真实H5业务revision2及此编译报告，fixture project/revision对应；源码仍含清单最后项删除、记录最后项替换并重新合计、计算倍率3及非负数字校验，不是退回标题修改版。
+- 实际project.config.miniprogramRoot对应dist/weapp，app.json含pages/index/index；每页JS/JSON/WXML/WXSS文件存在非空、JSON可解析。
+- 本机既有wcc.exe/wcsc.exe路径存在，报告各类官方校验成功日志对应；六个 `.verification/wxml.js` / `wxss.js` 实际输出均非空，bytes和SHA256逐项等于报告记录。
+- 独立结果 `test-results/qa-desktop-weapp-report.json` passed=true，3/3。这是源码一致性、真实Weapp构建与本地官方产物校验证据，不能当作微信模拟器/真机交互或业务通过。
+
+当前该分支产物核查通过，编译脚本/说明最终提交待C/B登记。B另安排一次r2包内实际H5编译，QA等其真实产物仅核对执行器/包内builder与依赖路径、源码及输出，不重新编译；未启动历史9420或旧服务。
+
+## 包内编译阻塞与限定新轮
+
+### r2包内实际编译失败
+
+C仅一次使用r2真正exe的Electron Node22.22、包内Store/builder/node_modules，计算业务revision2源码，在新 `.test-data-package-build-hro8RQ` 进行真实H5编译；`harness-package-build-report.json` failed/passed=false，实际stderr为 `log-symbols/index.js` 的 `chalk.blue is not a function`。未调用模型、未改包或重复编译。
+
+QA独立只读 `qa-desktop-package-build-audit.mjs` / `qa-desktop-package-build-report.json` 确认：实际exe为r2、fixture node_modules realpath指向r2包内依赖、builder/store SHA匹配manifest；从包内 log-symbols/index.js 使用createRequire解析chalk，log-symbols4.1.0声明chalk^4.1.0，实际解析包内chalk6.0.0，与实际失败一致。
+
+**QA-DESKTOP-02，P1：所测计算应用H5包内编译失败，编译交付不通过。** 日志代码在Taro CLI共同启动路径，推测会影响其它应用编译，但没有重复三类包内构建验证这一推测。r2界面/storage通过事实保留，不能据其宣布桌面生成/修改编译完整可交付；源码Node环境三类编译通过也不能补充为包内通过。
+
+### A追加授权的有限新轮
+
+A/B于13:08附近明确允许最多一个新独立包/30分钟；前两包保持原样，C唯一写入者先轻量核对现有依赖的版本解析，再修本地打包依赖收集，新包包含c88db3e窄修。不下载、不费用、不无限重包。新包完成后由QA独占一次真实包内H5编译，工程不重复；成功则实际交互新产物并相称复验原storage关闭门控/源码窄修包内容绑定，失败则如实结束为不能完整交付。
+
+QA准备临时 `qa-desktop-newpackage-build-check.mjs`，仅复用既有包内编译脚本并将输出改为独立QA报告，保留r2失败证据；计算用例使用原业务revision2的倍率3、负数、非数、零输入。等待C新包，未在等待阶段宣称编译问题已修复。
+
+### r3最终独立验收（有限新轮完成）
+
+- 唯一新包：`D:/app/release-harness-20261009-r3/win-unpacked/Sprout Studio.exe`，源码基线 `8076b85296c2529dc785a3daf627102c94111534`。已独立核对10项electron/server包内原始字节SHA=新manifest；与8076提交仅归一化CRLF后内容完全一致。r3实际log-symbols解析chalk4.1.2、blue是函数，与声明版本相容；不再使用r2的chalk6错误版本。前两包保持未改。
+- r3实际exe SHA256=`62c62d170a95aa4a3eb3df05f0d56a3654ab4344f7452e21dea1334afed7100f`（原Electron二进制，不能独自证明源码版本）；包内server/index SHA256=`dcb44b91129b8287e11b880d288f5d0986ae571e012c12f26b441149496d3c3d`。实际执行路径/包根/独立userData均在新UI报告中核对，renderer隔离通过。
+- QA独占一次真实包内H5编译，2026-10-09 13:13北京时间开始，`qa-desktop-newpackage-build-report.json` completed/passed=true。真实执行器为r3exe/Electron38.8.6/Node22.22.0，包内Store/builder及node_modules真实路径；源码为已验收计算业务revision2，摘要=`26f2f6885c591e06df971b99fc3dfde9c9133a09c14a02e30e9dec2893b351e5`，隔离root `.test-data-package-build-eMzfrC`。只targets H5，日志通用“微信端编译检查通过”文案不能扩大为本次包内Weapp已编译。
+- 将该刚编译draft用包内Store发布为测试可用revision；真实r3exe加载新产物。不是旧H5假冒新产物，不调用模型。四项精确文本断言：输入3→`结果：9`，输入-1→`结果：请输入非负数字`，输入abc→同一提示，输入0→`结果：0`，全部通过。
+- 首次UI严格断言期望漏写已知固定“结果：”前缀，实际负数提示正确，此为QA脚本错误而非包新故障。保留 `qa-desktop-newpackage-ui-first-report.json`；修正两项精确期望、记录切换先等待.edit及预期文本，在全新UIworkspace仅复制已编译revision并跳过重复发布；**没有再次编译**。最终 `qa-desktop-newpackage-ui-report.json` passed=true，13:17北京时间，新workspace=`D:/app/test-results/qa-desktop-newui-dXBTsu/workspace`，独立userData在同一测试目录。
+- 旧有效记录H5只用于相称复用原存储关闭缺陷的触发步骤：真实r3exe进入500ms storage.json rename且尚未完成，预览最后合计9，正常app.quit后重开仍精确9，passed=true。不是把记录旧产物算作新包第二次编译；本轮只一次计算H5包内编译。
+- 恢复关闭窄修绑定：c88db3e与8076b85的server/index无源码差异，r3包此文件匹配8076内容，结合上方独立sourceDigest门控（HTTP400、不调用Agent/不创建任务、close结束），证明**窄修已经进入r3资源**。没有宣称在真实UI主动恢复或付费模型执行中关窗；相关开放链仍未验证。
+
+QA-DESKTOP-02在“本地包依赖版本错误→所测计算应用包内H5编译与真实新exe交互”限定范围已修复并独立通过。r2失败证据不改写；r3未覆盖包内微信编译、真实模型、正式安装器/签名/分发。源码环境三类Weapp构建/官方产物校验通过依旧与本项区分，未做微信实际交互。
+
+### 交接与写入结束
+
+本续派QA独立验收已结束：r3 Windows解压目录版启动/实际新H5编译与交互/保存中正常退出重开通过；恢复窄修源码门控及包资源绑定通过；三类业务Weapp源码与官方产物核查通过。报告以上精确版本与范围为准，产品代码、测试源码、打包脚本、总台账、Git暂存/提交均由QA保持未改；临时脚本/报告不上传。B继续负责整体交付和明确清单提交/同步，A维护当前台账。
+
+本轮未做真实商业模型开放需求与自主修复、模型执行中关闭恢复、微信模拟器/真机交互、包内Weapp编译、正式安装器或分发；不将限定验收表述为整个HARNESS-001完成。恢复先读TASKS.md、B工作包、本QA报告与8076源码；新机没有本机临时报告时用已提交脚本及本报告的明确流程重建新夹具，不读取旧密钥或旧服务。QA新桌面/编译进程已结束，无额外后台唤醒承诺；当前无需新增测试或重复编译。

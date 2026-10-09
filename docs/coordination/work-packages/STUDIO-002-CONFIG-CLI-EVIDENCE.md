@@ -24,6 +24,8 @@
 
 本包首次测试结果：Vite build通过；共享客户端/配置回归通过；原生safeStorage占位保存、CLI重开、另一profile隔离、正常UI两窗口同服务/配置、CLI附着、清除/保存后两个窗口更新、退出发现文件清理已通过。全部测试只使用新建临时profile、自造占位配置，无真实模型调用。共享业务测试构建为明确替身，但verify使用真实Edge浏览器；不以此声称真实生成或打包升级已验收。
 
-当前第一提交尚待依赖集成：包三 `verificationRequirements(project,'')`、`validateVerificationPlan`、`validateVerificationEvidence` 将统一保护独立verify路由；包一 `cancelPreparation(id)` 由B集成后在verify进入mutation后调用，避免初始化准备覆盖digest。不得在未集成统一策略时把独立二维码验证记作完成。后续在含repair依赖的HEAD进行测试，只交付本包两个commit清单，避免重复拣选依赖提交。
+第一提交 `398de9ae835aacef957d002e3ab5993194175e7c`，随后接入包三冻结 `f371856125f8f3c2f05aa1eca907603b41908588`（本分支依赖提交 `ddecf35`，B不得重复拣选）。策略补丁复用 `verificationRequirements(project,'')`、`validateVerificationPlan`、`validateVerificationEvidence` 统一保护独立verify路由，非法计划/证据明确存failed，客户端非零退出；请求自由文字不能解除项目既有二维码要求。包一 `cancelPreparation(id)` 由B集成后在verify进入mutation后调用，避免初始化准备覆盖digest。依赖关系与最终HEAD详见本机测试报告；只交付本包两个commit清单。
+
+交叉测试另外观察到既有 restore 在响应成功后仍 await 删除draft，短暂保留项目mutation锁；立即verify可收到“项目操作正在进行”。已向B报告，建议集成时将成功响应移到清理之后，不以等待技巧掩盖用户可见问题。本包二维码策略用独立QR项目验证，未擅改其它归属restore路由。
 
 恢复入口：B读取本记录与本包提交，核对共享route和UI hunk；C继续统一策略最小补丁，QALead安排独立QA。正常profile的首次真实凭据输入由用户/A通过正常加密设置入口完成，C不读取或转移历史密钥。包内资源、升级及真实模型整体用户历程仍由集成验收绑定最终版本。

@@ -10,7 +10,7 @@ import { runAgent } from './agent.mjs';
 import { remember,safeText,safeValue,textRedactor,createTask,recoverTasks,sourceDigest,LIMITS,checkpointBudget } from './harness.mjs';
 import { storageBridge } from './preview-bridge.mjs';
 import { configureNetwork,modelFetch } from './network.mjs';
-import { verifyPreview } from './verify.mjs';
+import { verifyPreview,verificationRequirements,validateVerificationPlan,validateVerificationEvidence } from './verify.mjs';
 
 export function parseSettings(input,current={}) {
   if(!input||typeof input!=='object'||Array.isArray(input)||['provider','baseUrl','model','apiKey'].some(key=>input[key]!==undefined&&typeof input[key]!=='string'))throw new Error('模型配置格式无效。');
@@ -168,10 +168,15 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
     const timer=setTimeout(()=>controller.abort(new Error('verification-timeout')),120000);
     try{
       const revision=project.revision,digest=await sourceDigest(store,project);
-      const checked=await verifyPreview(path.join(store.dir(id),'revisions',String(revision)),req.body.steps,{signal:controller.signal});
+      const requirements=verificationRequirements(project,''),steps=req.body?.steps;let checked,stage='plan';
+      try{
+        validateVerificationPlan(steps,requirements);stage='browser';
+        checked=await verifyPreview(path.join(store.dir(id),'revisions',String(revision)),steps,{signal:controller.signal});
+        stage='evidence';validateVerificationEvidence(checked,steps,requirements);
+      }catch(error){controller.signal.throwIfAborted();checked={state:'failed',kind:stage==='plan'?'invalid-plan':stage==='evidence'?'invalid-evidence':'verification-error',error:safeText(error.message,config.apiKey),time:Date.now()};}
       controller.signal.throwIfAborted();
       if(project.revision!==revision||await sourceDigest(store,project)!==digest)throw new Error('源码已变化，请重新验证当前版本。');
-      project.verification={...safeValue(checked,config.apiKey),revision,sourceDigest:digest};
+      project.verification={...safeValue(checked,config.apiKey),profile:requirements.profile,revision,sourceDigest:digest};
       controller.publicationStarted=true;await store.save(project);res.json(store.public(project));
     }finally{clearTimeout(timer);jobs.delete(id);finish();}
   }));

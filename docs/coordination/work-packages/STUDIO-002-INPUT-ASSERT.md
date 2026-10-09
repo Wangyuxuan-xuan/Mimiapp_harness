@@ -1,6 +1,6 @@
 # STUDIO-002 输入回填验收补强准备
 
-维护人：B 小芽项目负责人，2026-10-09。当前仅方案与独立负例准备，未授权产品实现。
+维护人：B 小芽项目负责人，2026-10-09。准备已验收；A已明确批准最小范围实施，当前开发与独立QA准备中。当前状态以下述最新记录为准。
 
 ## 授权、归属与边界
 
@@ -52,3 +52,16 @@
 B接受方案方向和原负例证据，尚未授权或执行产品实现、完整回归与新包。独立QA报告末尾角色名已由B修正为实际工程Lead聊天ID，其负例及结论未改。原QALead仍是唯一待恢复桌面验收者，不称其正在操作。
 
 准备工作已完成并经B核对：工程最终冻结SHA256 `bfa7b94ecd16c47e13268ac44684b091c38b3df54d113e4ab39f1c69826793da`，QA经角色登记修正后的报告SHA256 `d9cfa7ed2d6411377e20abad36d32f5b5a0a46d9e45d6d416e138e32a3b9f038`。工程与本子QA均已结束本轮执行；没有产品writer或新增模型任务。当前继续负责人B，交A确认下一实施派发，原QALead审批恢复后仍优先收尾真实桌面验收。源码基线与r2产品不变，方案完成不等于功能已实现。
+
+## 最新：A批准实施后已实际派发
+
+A明确接受最小value/相邻click因果/可信QR来源同包，纳用户持续改进授权自动接续，不因无关桌面审批停止全部工作。准备三文档已随 `c4af44f9a3d7bb7676e7a8cedba1aa3caacc6d54` 正常推送。B已创建独立干净工作树 `D:/app/.worktrees/studio-002-input-assert`，分支 `codex/studio-002-input-assert`，基线c4af44f。
+
+- 唯一产品writer：实际续派 `/root/studio_repair`，限新工作树verify/agent/skill及必要自有开发回归/实施说明。原连续工作树4e冻结保留，不在main写产品，不push或打包。
+- 独立QA：实际续派 `/root/input_assert_qa`，主树唯一新QA代码writer，仅新增 `tests/qa/input-value-journey.test.mjs`、`tests/qa/input-value-fixture.mjs`；自有记录 `docs/coordination/qa/STUDIO-002-input-assert-implementation.md`。先准备，等B放行精确冻结SHA才运行产品，不追活动工作树。
+- 工程Lead：01a11fb4-ff38-7723-8711-298ab2608c9c，只读集中复审新实现，不与writer并发写产品。
+- B：核版本与证据、纠偏、统一集成和范围内接续；A独占总台账。
+
+沿最终工程合同实施并验证值精确比较、相邻点击前后变化、可信QR来源与宿主证据、取消/失败分类/隐私及保留原短长空门；允许生成后合法清空。通用需求覆盖与多场景组合未纳本包，20steps不变。无新依赖、Taro编译、商业模型、桌面输入、current或用户项目修改、r2重包。原QALead仍待审批，恢复后优先完成其原生余项，本开发不代替那份验收。
+
+下一步：writer冻结SHA/clean后，工程集中复审与独立QA按精确SHA执行，必要修复继续同writer；B验收通过才集成。当前无已实现/已测试完成结论，不承诺结束回合后的永久后台运行。

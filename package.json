@@ -6,7 +6,8 @@
   "description": "小芽 · 用对话制作小程序",
   "main": "electron/main.cjs",
   "scripts": {
-    "dev": "node server/index.mjs",
+    "dev": "npm run build && electron .",
+    "dev:web": "node server/index.mjs",
     "build": "vite build",
     "start": "electron .",
     "studio": "node cli/studio.mjs",

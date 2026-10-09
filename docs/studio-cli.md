@@ -1,8 +1,8 @@
 # Studio CLI 和模型配置
 
-正常源码桌面启动 `npm start` 与打包程序都使用系统应用数据目录下的 `Sprout Studio/current`。Windows 通常为 `%APPDATA%/Sprout Studio/current`。它不随程序安装位置、升级目录或项目变化；一个配置目录只有一个服务，可打开多个窗口。密钥使用 Electron safeStorage，在 Windows 上由系统 DPAPI 加密。此目录为本轮新增的空目录，不发现、读取或迁移历史 `.studio`、r5 测试目录或旧默认配置。首次在新版正常设置窗口保存一次，之后复用。历史程序和历史数据保持各自隔离。
+正常开发入口 `npm run dev` 先构建界面再启动 Electron，与 `npm start`、打包程序和 CLI 都使用系统应用数据目录下的 `Sprout Studio/current`。`npm start` 使用已有界面构建，需先运行一次 `npm run build`。Windows 通常为 `%APPDATA%/Sprout Studio/current`。它不随程序安装位置、升级目录或项目变化；一个配置目录只有一个服务，可打开多个窗口。密钥使用 Electron safeStorage，在 Windows 上由系统 DPAPI 加密。此目录为本轮新增的空目录，不发现、读取或迁移历史 `.studio`、r5 测试目录或旧默认配置。首次在新版正常设置窗口保存一次，之后新窗口、新项目、编译、QA或升级均复用同一正常配置；隔离测试目录须自行使用占位配置。历史程序和历史数据保持各自隔离。
 
-开发者可显式设置绝对路径 `STUDIO_USER_DATA_DIR` 和 `STUDIO_WORKSPACE_DIR` 做隔离检查。相同配置目录不能同时运行不同工作区；另一个工作区须使用独立配置目录。开发专用 `STUDIO_URL` 连接外部本机服务时使用独立 `external-dev` 窗口目录，配置能力由那个服务决定，不能共享普通桌面的密钥；CLI 拒绝此模式。单独 `npm run dev` 仍是明确的开发内存配置入口。
+开发者可显式设置绝对路径 `STUDIO_USER_DATA_DIR` 和 `STUDIO_WORKSPACE_DIR` 做隔离检查。相同配置目录不能同时运行不同工作区；另一个工作区须使用独立配置目录。网页热更新使用显式 `npm run dev:web`：它启动裸网页服务，密钥只在本次进程内存中，不使用正常安全配置。开发专用 `STUDIO_URL` 连接外部本机服务时使用独立 `external-dev` 窗口目录，配置能力由那个服务决定，不能共享普通桌面的密钥；CLI 拒绝此模式。这两个开发例外不作为正常配置复用或真实模型验收入口。
 
 在源码目录运行：
 

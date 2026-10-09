@@ -4,17 +4,20 @@
 
 ## 启动
 
-Windows 桌面包：打开 `release-qr-fix/win-unpacked/Sprout Studio.exe`。需要保留整个 `win-unpacked` 文件夹，不能只复制 exe。首次启动会编译示例，请稍等。
+Windows 桌面包：打开发布目录中的 `win-unpacked/Sprout Studio.exe`。需要保留整个 `win-unpacked` 文件夹，不能只复制 exe。
 
 源码运行（Node.js 22 或更新版本）：
 
 ```powershell
 npm ci
-npm run build
-npm start
+npm run dev
 ```
 
-开发网页工作台：`npm run dev`，默认本机 5173 端口。`STUDIO_PORT` 可指定其他端口。`npm run pack` 生成 Windows 目录版；构建需要先安装 Electron 官方运行时。本仓库还提供支持代理与 SHA256 校验的 `scripts/setup-electron.mjs`。
+`npm run dev` 先构建工作台界面，再启动安全桌面入口；也可分开运行 `npm run build` 和 `npm start`。正常开发、`npm start`、桌面包和 Studio CLI 共用系统应用数据目录下的 `Sprout Studio/current`，Windows 通常为 `%APPDATA%/Sprout Studio/current`。配置保存一次后，新窗口、新项目和更换程序目录继续复用，不需要每次编译或验收重新输入。首次使用此新目录需通过正常设置入口保存；历史测试目录与旧配置不自动读取或迁移。
+
+需要网页热更新时显式运行 `npm run dev:web`，默认本机 5173 端口，`STUDIO_PORT` 可指定其他端口。这个裸网页服务的密钥只在本次进程内存中，退出即清除，不使用正常桌面的安全配置。开发专用 `STUDIO_URL` 外接本机网页服务也使用独立窗口目录，配置由外接服务管理；它不是正常配置复用入口。
+
+`npm run pack` 生成 Windows 目录版；构建需要先安装 Electron 官方运行时。本仓库还提供支持代理与 SHA256 校验的 `scripts/setup-electron.mjs`。CLI 使用方式见 [Studio CLI 和模型配置](docs/studio-cli.md)。
 
 ## 使用
 
@@ -25,13 +28,13 @@ npm start
 5. 点击“导出小程序”，解压 ZIP，将包含 `project.config.json` 的目录导入微信开发者工具。`dist/weapp` 已经是编译产物，不需要先安装依赖。
 6. 使用自己的真实 AppID、微信登录和官方工具完成真机预览、上传及发布。当前 demo 不代办注册、认证、审核和发布。
 
-API Key 只保存在当前应用进程内存中，关闭或重启后需要重新填写。不会导出到小程序，也不会保存到项目文件。请求模型时会向所配置服务发送对话和当前源码。更换 API 地址不会自动转发此前的密钥。
+正常桌面入口通过系统安全存储加密保存 API Key，关闭、重开或升级后继续使用。密钥不会导出到小程序或保存到项目文件。裸网页开发入口 `npm run dev:web` 是仅内存的例外。请求模型时会向所配置服务发送对话和当前源码；更换 API 地址不会自动转发此前的密钥。
 
 网络环境需要代理时，应用支持现有 `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` 环境变量；本机工作台和预览不经过代理。
 
 ## 数据与能力范围
 
-- 开发模式项目保存在 `.studio/projects`；桌面包保存在 `%APPDATA%/Sprout Studio/workspace/projects`。
+- 正常开发与桌面包项目均保存在 `%APPDATA%/Sprout Studio/current/workspace/projects`；显式裸网页开发 `npm run dev:web` 默认保存在源码目录的 `.studio/projects`。测试可用独立配置目录与工作区，彼此隔离。
 - 每次成功制作保存不可变版本。失败或取消制作保留上一可用版本。恢复旧版会新建版本，后续历史仍在。
 - 手机预览数据按项目保存，刷新以及重新打开工作台后继续存在。恢复代码不会清空用户数据。
 - 当前允许编辑一个页面、项目内组件及样式；应用内多个视图可用 React 状态切换。完整多路由管理、云数据库、登录、支付、真机调试尚未集成。

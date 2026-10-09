@@ -9,6 +9,8 @@
     "dev": "node server/index.mjs",
     "build": "vite build",
     "start": "electron .",
+    "studio": "node cli/studio.mjs",
+    "test:studio-native": "node --test tests/studio-native.check.mjs",
     "test": "node --test tests/*.test.mjs",
     "pack": "node scripts/package-desktop.mjs",
     "test:harness-ui": "node scripts/harness-ui-check.mjs",
@@ -78,6 +80,7 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "cli/**/*",
       "server/**/*",
       "templates/**/*",
       "agent-skills/**/*",

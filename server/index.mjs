@@ -10,6 +10,7 @@ import { runAgent } from './agent.mjs';
 import { remember,safeText,safeValue,textRedactor,createTask,recoverTasks,sourceDigest,LIMITS,checkpointBudget } from './harness.mjs';
 import { storageBridge } from './preview-bridge.mjs';
 import { configureNetwork,modelFetch } from './network.mjs';
+import { verifyPreview } from './verify.mjs';
 
 export function parseSettings(input,current={}) {
   if(!input||typeof input!=='object'||Array.isArray(input)||['provider','baseUrl','model','apiKey'].some(key=>input[key]!==undefined&&typeof input[key]!=='string'))throw new Error('模型配置格式无效。');
@@ -132,6 +133,7 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
     }finally{storageRequests.delete(pendingRequest);finish();}
   });
   app.post('/api/projects',mutation(async(req,res)=>{res.json(await initializeProject(req.body.title));}));
+  app.get('/api/settings',(_req,res)=>res.json(publicSettings()));
   app.post('/api/settings',settingsMutation(async(req,res)=>{
     const candidate=parseSettings(req.body,config);
     if(credentialStore){try{await credentialStore.save(candidate);}catch{throw new Error('系统安全存储写入失败，模型设置未保存。');}}
@@ -158,6 +160,20 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
     assertIdle(req.params.id);const p=await store.get(req.params.id);if(req.body.revision!==p.revision)throw new Error('该错误来自旧预览，请刷新当前版本再检查。');
     const e={revision:p.revision,message:safeText(req.body.message,config.apiKey).slice(0,2000),source:safeText(req.body.source,config.apiKey).slice(0,500),line:Number(req.body.line)||0,stack:safeText(req.body.stack,config.apiKey).slice(0,3000),time:Date.now()};
     p.runtimeErrors=[...p.runtimeErrors,e].slice(-10);await store.save(p);res.json(store.public(p));
+  }));
+  app.post('/api/projects/:id/verify',mutation(async(req,res)=>{
+    const id=req.params.id;assertIdle(id);const project=await store.get(id);
+    if(!project.ready)throw new Error('项目尚未编译成功，暂时无法验证。');
+    const controller=new AbortController();let finish;controller.finished=new Promise(r=>{finish=r;});jobs.set(id,controller);
+    const timer=setTimeout(()=>controller.abort(new Error('verification-timeout')),120000);
+    try{
+      const revision=project.revision,digest=await sourceDigest(store,project);
+      const checked=await verifyPreview(path.join(store.dir(id),'revisions',String(revision)),req.body.steps,{signal:controller.signal});
+      controller.signal.throwIfAborted();
+      if(project.revision!==revision||await sourceDigest(store,project)!==digest)throw new Error('源码已变化，请重新验证当前版本。');
+      project.verification={...safeValue(checked,config.apiKey),revision,sourceDigest:digest};
+      controller.publicationStarted=true;await store.save(project);res.json(store.public(project));
+    }finally{clearTimeout(timer);jobs.delete(id);finish();}
   }));
   app.post('/api/projects/:id/run',mutation(async(req,res)=>{
     let settingsSnapshot;do{settingsSnapshot=settingsQueue;await settingsSnapshot.catch(()=>{});}while(settingsSnapshot!==settingsQueue);

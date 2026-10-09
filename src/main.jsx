@@ -2,9 +2,11 @@ import React,{useEffect,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {Sprout,Plus,Settings2,ArrowUp,ArrowUpRight,ChevronDown,ChevronRight,Check,CheckCheck,Code2,Download,FolderOpen,History,LayoutGrid,Loader2,MessageSquare,MoreHorizontal,PanelLeftClose,Play,RefreshCw,ShieldCheck,Smartphone,Sparkles,Square,Terminal,Wifi,X,Leaf,Copy,ArrowLeft,BookOpen,Undo2} from 'lucide-react';
 import './style.css';
+import {createStudioClient} from '../server/studio-client.mjs';
 
 const token=document.querySelector('meta[name="studio-token"]')?.content||'';
-async function api(url,options={}) { const res=await fetch('/api'+url,{...options,headers:{'Content-Type':'application/json','X-Studio-Token':token,...options.headers}});if(!res.ok){const err=await res.json().catch(()=>({error:'请求失败，请重试。'}));throw new Error(err.error);}return res.json(); }
+const studioClient=createStudioClient({token});
+const api=studioClient.json;
 const json=value=>JSON.stringify(value);
 const deepseekModels=[{id:'deepseek-flash',name:'DeepSeek Flash'},{id:'deepseek-v4-pro',name:'DeepSeek V4 Pro'}];
 function App(){
@@ -12,7 +14,7 @@ function App(){
   const [projects,setProjects]=useState([]),[active,setActive]=useState(null),[settings,setSettings]=useState(null),[previewOrigin,setPreviewOrigin]=useState('');
   const [modal,setModal]=useState(null),[prompt,setPrompt]=useState(''),[busy,setBusy]=useState(false),[status,setStatus]=useState(''),[stream,setStream]=useState(''),[error,setError]=useState(''),[toast,setToast]=useState('');
   const [tab,setTab]=useState('preview'),[width,setWidth]=useState(375),[refresh,setRefresh]=useState(0),[code,setCode]=useState({}),[file,setFile]=useState('src/pages/index/index.jsx'),[logs,setLogs]=useState([]),[collapsed,setCollapsed]=useState(false);
-  const bottom=useRef(null),input=useRef(null),abortRef=useRef(null);
+  const bottom=useRef(null),input=useRef(null),abortRef=useRef(null),sendingRef=useRef(false);
   function notify(text){setToast(text);setTimeout(()=>setToast(''),3500);}
   async function switchModel(model){
     if(busy||switchingModel)return;
@@ -22,6 +24,7 @@ function App(){
   async function boot(){try{const data=await api('/bootstrap');setProjects(data.projects);setSettings(data.settings);setPreviewOrigin(data.previewOrigin);setActive(data.projects[0]||null);if(data.initialError||data.settings.keyStorage?.warning)setError(data.initialError||data.settings.keyStorage.warning);}catch(e){setError(e.message);}}
   useEffect(()=>{boot();},[]);
   useEffect(()=>{if(active?.id&&!modal)input.current?.focus();},[active?.id,modal]);
+  useEffect(()=>{let cancelled=false;const refreshSettings=()=>studioClient.publicSettings().then(value=>{if(!cancelled)setSettings(value);}).catch(()=>{});window.addEventListener('focus',refreshSettings);const timer=setInterval(refreshSettings,1500);return()=>{cancelled=true;clearInterval(timer);window.removeEventListener('focus',refreshSettings);};},[]);
   useEffect(()=>{
     function receive(event){const frame=document.querySelector('iframe[title="小程序交互预览"]');if(event.origin!==previewOrigin||event.source!==frame?.contentWindow||event.data?.projectId!==active?.id)return;
       if(event.data.type==='sprout-storage')api(`/projects/${active.id}/storage`,{method:'POST',body:json({values:event.data.values})}).catch(e=>setError('预览数据保存失败：'+e.message));
@@ -36,28 +39,25 @@ function App(){
   const running=active?.tasks?.some(t=>t.state==='running');
   useEffect(()=>{if(!active?.id)return;let cancelled=false;const timer=setInterval(()=>{api(`/projects/${active.id}`).then(p=>{if(!cancelled&&(p.tasks?.some(t=>t.state==='running')||running||p.revision!==active.revision||JSON.stringify(p.initialization)!==JSON.stringify(active.initialization))){updateProject(p);setStatus(p.tasks.at(-1)?.phase||'');}}).catch(()=>{});},1000);return()=>{cancelled=true;clearInterval(timer);};},[active?.id,running,active?.revision,active?.initialization?.state]);
   async function send(options={}){
-    if((!prompt.trim()&&!options.resumeTaskId&&!options.repair)||busy||running||switchingModel||!active)return;
-    if(!settings?.hasKey){setModal('settings');return;}
+    if((!prompt.trim()&&!options.resumeTaskId&&!options.repair)||busy||running||switchingModel||!active||sendingRef.current)return;
+    sendingRef.current=true;
+    let currentSettings;try{currentSettings=await studioClient.publicSettings();setSettings(currentSettings);}catch(e){sendingRef.current=false;setError(e.message);return;}
+    if(!currentSettings.hasKey){sendingRef.current=false;setModal('settings');return;}
     const message=prompt.trim();setPrompt('');setError('');setBusy(true);setStream('');setLogs([]);setStatus('正在理解你的想法…');
     setActive(p=>({...p,messages:[...p.messages,{role:'user',text:message,time:Date.now()}]}));
     try{
       const controller=new AbortController();abortRef.current=controller;
-      const res=await fetch(`/api/projects/${active.id}/run`,{method:'POST',headers:{'Content-Type':'application/json','X-Studio-Token':token},body:json({prompt:message,...options}),signal:controller.signal});
-      if(!res.ok){throw new Error((await res.json()).error||'启动失败');}
-      const reader=res.body.getReader(),decoder=new TextDecoder();let pending='';
-      while(true){const {done,value}=await reader.read();if(done)break;pending+=decoder.decode(value,{stream:true});let split;
-        while((split=pending.indexOf('\n'))>=0){const line=pending.slice(0,split);pending=pending.slice(split+1);if(!line)continue;const event=JSON.parse(line);
+      for await(const event of studioClient.run(active.id,{prompt:message,...options},{signal:controller.signal})){
           if(event.type==='status'){setStatus(event.text);setLogs(old=>[...old,event.text]);}
           if(event.type==='text')setStream(old=>old+event.text);
           if(event.type==='done'){updateProject(event.project);setStream('');notify(event.project.revision>active.revision?'新版本已保存，预览已更新':'小芽已回复');}
           if(event.type==='error'){setError(event.text);if(event.project)updateProject(event.project);}
-        }
       }
     }catch(e){setError(e.name==='AbortError'?'连接中断，任务仍可能在制作，请查看进度。':e.message);}
-    finally{setBusy(false);setStatus('');setStream('');abortRef.current=null;try{const p=await api(`/projects/${active.id}`);updateProject(p);}catch{}}
+    finally{sendingRef.current=false;setBusy(false);setStatus('');setStream('');abortRef.current=null;try{const p=await api(`/projects/${active.id}`);updateProject(p);}catch{}}
   }
   async function stop(){try{await api(`/projects/${active.id}/stop`,{method:'POST'});setStatus('正在停止…');}catch(e){notify(e.message);}}
-  async function exportProject(){try{const res=await fetch(`/api/projects/${active.id}/export`,{headers:{'X-Studio-Token':token}});if(!res.ok)throw new Error((await res.json()).error);const url=URL.createObjectURL(await res.blob());const a=document.createElement('a');a.href=url;a.download=`${active.title}.zip`;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);notify('已导出源码与微信小程序产物');}catch(e){notify(e.message);}}
+  async function exportProject(){try{const res=await studioClient.export(active.id);const url=URL.createObjectURL(await res.blob());const a=document.createElement('a');a.href=url;a.download=`${active.title}.zip`;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);notify('已导出源码与微信小程序产物');}catch(e){notify(e.message);}}
   function suggestion(text){setPrompt(text);input.current?.focus();}
   return <div className={'studio '+(collapsed?'sidebar-collapsed':'')}>
     <aside className="sidebar">

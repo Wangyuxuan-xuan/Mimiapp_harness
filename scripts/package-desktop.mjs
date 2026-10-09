@@ -18,7 +18,7 @@ async function run(file,args=[]){await new Promise((resolve,reject)=>{const p=sp
 if(!finalizeOnly){
 await fs.access(path.resolve('node_modules/electron/dist/electron.exe'));await fs.access(path.resolve('node_modules/electron-builder/cli.js'));
 await fs.mkdir(stage);await run('node_modules/vite/bin/vite.js',['build','--outDir',path.join(stage,'dist')]);
-for(const dir of ['electron','server','templates','agent-skills'])await fs.cp(path.resolve(dir),path.join(stage,dir),{recursive:true});
+for(const dir of ['electron','cli','server','templates','agent-skills'])await fs.cp(path.resolve(dir),path.join(stage,dir),{recursive:true});
 const pkg=JSON.parse(await fs.readFile('package.json','utf8'));delete pkg.build;delete pkg.devDependencies;delete pkg.scripts;await fs.writeFile(path.join(stage,'package.json'),JSON.stringify(pkg,null,2));await fs.symlink(path.resolve('node_modules'),path.join(stage,'node_modules'),'junction');
 await run('node_modules/electron-builder/cli.js',['--win','dir','--publish','never',`--config.directories.output=${output}`,`--config.directories.app=${stage}`,`--config.electronDist=${path.resolve('node_modules/electron/dist')}`]);
 await run('scripts/repair-package-deps.mjs',[path.join(output,'win-unpacked/resources/app/node_modules')]);
@@ -43,7 +43,7 @@ async function recordFixedResource(relative){
 }
 // Deliberately enumerate only shipped project resources, never workspace data,
 // credentials or settings. package.json here is the staged production manifest.
-for(const relative of ['electron','server','templates','agent-skills','package.json'])await recordFixedResource(relative);
+for(const relative of ['electron','cli','server','templates','agent-skills','package.json'])await recordFixedResource(relative);
 const decoderVersions={};for(const name of ['jsqr','pngjs'])decoderVersions[name]=JSON.parse(await fs.readFile(path.join(packagedApp,'node_modules',name,'package.json'),'utf8')).version;
 const finalizerSourceCommit=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
 const manifest={at:new Date().toISOString(),baseCommit:sourceCommit||finalizerSourceCommit,finalizerSourceCommit,finalizeOnly,packageTransformation,productBase:'242b6fcd40638bb30723249b1489f4ef578c009e',stage,output,exe:path.join(output,'win-unpacked/Sprout Studio.exe'),files,decoderVersions,electron:JSON.parse(await fs.readFile('node_modules/electron/package.json','utf8')).version,builder:JSON.parse(await fs.readFile('node_modules/electron-builder/package.json','utf8')).version,downloads:'local electronDist and existing dependencies only'};

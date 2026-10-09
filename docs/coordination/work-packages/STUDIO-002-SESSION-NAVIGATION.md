@@ -22,3 +22,23 @@ src/main.jsx全局busy禁用新建和项目按钮；updateProject在SSE done/err
 - 性能目前没有分段数据，不能断言慢在何处。先区分创建/初始构建、取消等待、制作、H5/Weapp、官方检查、版本保存和iframe加载；复用已有onLog及轻量计时，不盲目重编译或改缓存。
 - writer冻结提交与干净状态→工程只读复审→独立QA→B集成验收。正常用户包更新另行统一安排，不能把源码修复当成当前r2已修。
 - 恢复入口：本工作包、TASKS、上述工作树实际HEAD和代理结果；继续负责人B。原input assertion在另一工作树cb578873冻结并已交input_assert_qa独立复验，两包禁止混写。
+
+## 活动实现复审与独立准备
+
+工程Lead 01a11fb4-ff38-7723-8711-298ab2608c9c已只读核初改，B集中交唯一writer修三项：停止请求/响应跨轮归属（同项目stop未结算时不得启动下一轮并防旧状态回写）；run被接受前HTTP/网络失败不能丢草稿；无task同revision时迟到初始GET不能使failed/interrupted倒退preparing。尚无冻结或通过结论。
+
+独立QA Lead 01a11fb5-2b8d-75a2-bdd3-8aaf5ca47938实际复用qa_preview准备，仅写新tests/qa/session-navigation-{fixture,journey.test}.mjs与自有报告，不改产品、不写input测试。待B精确SHA及对应dist三项摘要放行才动态运行；优先复用writer一次Vite产物，必要时已授权唯一一次补建，不做Taro或商业调用。独立QA已同步上述三项迟到负例。
+
+方案复用：React官方useEffect清理/ignore模式（https://react.dev/reference/react/useEffect）及项目键隔离；GitHub TanStack/query（https://github.com/TanStack/query，MIT）能力成熟，但本次现有客户端足用，不新增依赖。抽现有React hook及纯预览状态helper，客户端只增可选onStarted接收通知；服务已有先jobs/createTask再flushHeaders，允许正确处理发送启动阶段停止，不改协议/执行策略。恢复实际createTask会新建UUID并resumedFrom旧id，不以同id恢复假设扩大修改。
+
+慢的调查边界：当前buildProject默认targets=['h5','weapp']串行，preview初始化等待双端/官方验证和提交；能输入与真实预览就绪需区分。没有分段实测，不断言瓶颈，不擅自拆交付门。全项目轮询携带历史可能增加流量亦需测量，不能冒称已优化。
+
+## 冻结与独立验收结果
+
+候选25d66c1cd2ecfa96b31b18d618b0e791e512b5b7、工作树干净。开发18项通过（实际Edge父+8业务子项9，状态/client/既有CLI9），新建可输入352ms仅替身环境。首开发失败因新建helper未等待选中C，原TAP失败保留；其首汇总误passed不能作有效证据。
+
+工程Lead精确只读最后审查通过，三项边界与空entry停止状态guard已修。B实际读最终hook/main/client、核服务headers/任务归属和恢复新UUID合同，独立逐项核dist index/JS/CSS摘要与精确sourceCommit一致。没有重复原繁重构建或商业验收。
+
+独立QA实际10业务轨迹通过：首完整运行9有效通过、1因测试冻结时钟导致toast永不消失挡住发送而失败；保留原失败，改用真实Enter后只重测该1组5095ms通过（父+子pass2/skip9），其余9不重跑。不得写成完整套件单次全绿。覆盖真实JSON消费后的迟到files/runtime/poll、双项目/新建/草稿、停止请求和响应分别晚到、HTTP拒绝/网络失败保原草稿及后续编辑、无task同revision失败与真实取消初始化终态、首版未ready与旧版可交互。使用隔离Edge、注入Agent、动态HTML，非商业模型/Taro或正常Electron窗口。
+
+下一步B统一集成导航与已验收input源码、补检查弹窗value/qr两项中文标签这一低风险集成项，保存回归/报告，再给工程Lead最终main SHA只打包一次独立r3。旧r2/current/hi继续保护，新包资源核验后再安排安全启用；不得宣称当前r2已修。性能分段仍待测，原二维码B亲验后续刷新/回填/清理尚待安全空闲现场。

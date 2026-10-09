@@ -70,7 +70,7 @@ function App(){
         </section>
       </div>
     </main>
-    {modal==='verification'&&active&&<Modal title="功能检查" subtitle="查看本次实际检查的范围。编译通过不代表所有业务功能通过。" onClose={()=>setModal(null)}><p>{active.verification?.state==='passed'?'所列检查通过':active.verification?.state==='failed'?'检查失败':'实际功能待验证'} · 版本 {active.verification?.revision||active.revision}</p>{active.verification?.steps?.map((s,i)=><p key={i}>{i+1}. {({click:'点击',fill:'填写',text:'文本包含',count:'数量等于',reload:'刷新'})[s.action]} {s.selector} {s.value??''}</p>)}{active.verification?.reason&&<p>{active.verification.reason}</p>}</Modal>}
+    {modal==='verification'&&active&&<Modal title="功能检查" subtitle="查看本次实际检查的范围。编译通过不代表所有业务功能通过。" onClose={()=>setModal(null)}><p>{active.verification?.state==='passed'?'所列检查通过':active.verification?.state==='failed'?'检查失败':'实际功能待验证'} · 版本 {active.verification?.revision||active.revision}</p>{active.verification?.steps?.map((s,i)=><p key={i}>{i+1}. {({click:'点击',fill:'填写',value:'输入值等于',text:'文本包含',count:'数量等于',qr:'二维码内容',reload:'刷新'})[s.action]} {s.selector} {s.value??''}</p>)}{active.verification?.reason&&<p>{active.verification.reason}</p>}</Modal>}
     {modal==='memory'&&active&&<MemoryModal project={active} onClose={()=>setModal(null)} onSaved={p=>{updateProject(p);setModal(null);notify('项目需求已修正');}}/>}
     {modal==='settings'&&<SettingsModal current={settings} onClose={()=>setModal(null)} onSaved={s=>{setSettings(s);setModal(null);notify(s.keyStorage?.mode==='memory'?'设置已保存，密钥仅用于本次启动':'模型设置已安全保存');}}/>}
     {modal==='new'&&<NewProjectModal onClose={()=>setModal(null)} onCreated={p=>{openProject(p);setModal(null);setTab('preview');}}/>}

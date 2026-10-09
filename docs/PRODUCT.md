@@ -54,7 +54,7 @@ STUDIO-002 继续处理桌面预览响应、配置一次保存、CLI 协同，�
 | --- | --- | --- |
 | [Codex 长任务实践](https://developers.openai.com/blog/run-long-horizon-tasks-with-codex) | 持久目标、约束、里程碑、验证条件与状态，失败后先修复 | 借鉴可恢复的工作方式；产品内由项目记忆、任务状态和验收工具承担，不引入另一个 Agent 框架 |
 | [Claude Code 工作机制](https://code.claude.com/docs/en/how-claude-code-works) | 收集上下文、工具行动、验证并根据结果调整；用户可中断 | 作为多轮执行与工具反馈的能力对照；不要求复制通用终端权限或全部扩展机制 |
-| [PI 官方 SDK](https://github.com/pi-packages/earendil-works-pi/blob/main/packages/coding-agent/docs/sdk.md) / 本地同包 docs/sdk.md | 原生会话、工具调用、事件、持久 SessionManager、上下文压缩与受控重试 | 已采用 MIT 许可的 PI 0.99.1，复用既有依赖，无需替换；自建小程序工具、业务验收、任务预算与安全边界。官方仓库近期可访问，但不把活跃等同于长期维护保证 |
+| [PI 官方 SDK](https://github.com/pi-packages/earendil-works-pi/blob/main/packages/coding-agent/docs/sdk.md) / 本地同包 docs/sdk.md | 原生会话、工具调用、事件、持久 SessionManager、上下文压缩与受控重试 | 已采用 MIT 许可的 PI 0.99.1，复用既有依赖，无需替换；自建小程序工具、业务验收、使用记录与安全边界。官方仓库近期可访问，但不把活跃等同于长期维护保证 |
 | [Taro 官方文档](https://docs.taro.zone/docs/) / 既有 Taro 4.3.0 | 统一源码生成 H5 和微信产物 | 沿用现有双端构建，不为 Agent 定位重新实现编译器；平台兼容和真实运行仍独立检查 |
 | [Playwright 定位严格性](https://playwright.dev/docs/locators#strictness) / 现有浏览器工具 | 多匹配拒绝单目标操作，真实浏览器定位与交互 | 沿用 Playwright；自建有上限、无编辑值泄露的候选反馈和需求断言。宿主不自动替模型挑选按钮 |
 

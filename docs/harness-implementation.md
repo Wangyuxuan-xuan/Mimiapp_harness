@@ -94,3 +94,5 @@ node scripts/package-desktop.mjs --stage .package-staging-harness-20261009-r2 --
 最终修复包 `release-harness-20261009-r2/win-unpacked/Sprout Studio.exe` 于北京时间12:56生成，专项开始于12:42，限额内共两包。C r2烟雾报告 `test-results/harness-package-smoke-report.json` passed=true：包内生产依赖/PI/index/检查器导入、源码摘要匹配、真实新exe明确隔离启动及正常退出。QA r2原触发脚本复验 `test-results/qa-desktop-report.json` passed=true：需求修正/任务中断入口/旧版本实际预览/正常重开均通过；仅新夹具storage.json rename延迟500毫秒，确认未完成时合计9，正常quit后第三次打开仍9，关闭丢末笔数据已修复。QA进程均已结束，未做第三包或重复全量构建。
 
 最终包manifest `baseCommit=a09f1b9f326060b760b12744f6ef05113e9766a1` 是构建期间管理HEAD，产品基线242b6fc加本轮明确改动由文件SHA256绑定；server/index.mjs为6bc9adbb044149824eacd5879cf4e54b226752fd93040f2174e549ed5ede0b2e，electron/main.cjs为2531997d8923d9350ce29ed0308aa5440875787a16752d13b16ea5d125aa2df2。最终源码提交由B/QA绑定。可执行文件是同版本Electron启动器，单看exe摘要不足以证明业务源码版本，应同时核对resources/app与manifest。依赖修补脚本现在要求显式目的目录，拒绝默认覆盖旧包；该脚本不在app运行代码里，此收尾保护不改变已验收产物。
+
+关闭恢复晚注册补充：r2 打包后只读审查发现 resume 的 sourceDigest 等待期间可能错过 close 的 jobs 快照。源码在注册 controller 前同步复查 closing，阻止关闭后的新任务；node --test tests/desktop-close.test.mjs 两项门控通过（存储与恢复）。该窄修不在 r2 包中，本轮遵守最多两次打包；单独源码提交，不宣称已完成新包验收。

@@ -117,6 +117,7 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
     let prompt=previous?.prompt||String(req.body.prompt||'').trim();if(req.body.repair){const e=project.runtimeErrors.at(-1);if(!e||e.revision!==project.revision)throw new Error('没有当前版本的运行错误。');prompt='修复当前运行错误，并用实际功能检查验证：'+JSON.stringify(e);}
     if(!prompt||prompt.length>12000)throw new Error('请输入 1–12000 字的需求。');prompt=safeText(prompt,config.apiKey);
     if(!previous)remember(project,prompt,config.apiKey);
+    if(closing)throw new Error('应用正在关闭。');
     const controller=new AbortController();let finish;controller.finished=new Promise(r=>{finish=r;});jobs.set(id,controller);let task;
     try{task=await createTask(store,project,prompt,previous);}catch(e){jobs.delete(id);throw e;}
     const timeout=setTimeout(()=>{if(!controller.publicationStarted)controller.abort(new Error('timeout'));},LIMITS.milliseconds);

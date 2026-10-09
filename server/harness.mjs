@@ -1,0 +1,13 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { createHash,randomUUID } from 'node:crypto';
+import { atomicJson,readSources } from './store.mjs';
+export const LIMITS={attempts:3,tools:40,builds:3,milliseconds:600000,memoryChars:48000};
+export function safeText(value,key=''){let text=String(value||'');if(key)text=text.split(key).join('[密钥已隐藏]');return text.replace(/\b(?:sk-[A-Za-z0-9_-]{8,}|Bearer\s+\S+)/gi,'[密钥已隐藏]');}
+export function normalizeProject(p){p.memory??={goal:p.title,constraints:'',changes:(p.messages||[]).filter(m=>m.role==='user').map(m=>({text:safeText(m.text),time:m.time})),updatedAt:Date.now()};p.tasks??=[];p.runtimeErrors??=[];return p;}
+export function remember(p,prompt,key){normalizeProject(p);const text=safeText(prompt,key);if(JSON.stringify(p.memory).length+text.length>LIMITS.memoryChars)throw new Error('需求记录已满，请先在项目需求中整理后继续。');p.memory.changes.push({text,time:Date.now()});p.memory.updatedAt=Date.now();}
+export function memoryContext(p){normalizeProject(p);if(JSON.stringify(p.memory).length>LIMITS.memoryChars)throw new Error('历史需求超过上下文容量，请在项目需求中整理；原始对话与记录仍保留。');return JSON.stringify(p.memory);}
+export function digestSources(sources){return createHash('sha256').update(JSON.stringify(Object.entries(sources).sort(([a],[b])=>a.localeCompare(b)))).digest('hex');}
+export async function sourceDigest(store,p){const dir=p.ready?path.join(store.dir(p.id),'revisions',String(p.revision)):path.join(store.dir(p.id),'current');return digestSources(await readSources(dir));}
+export async function createTask(store,p,prompt,previous){normalizeProject(p);if(previous&&previous.attempts>=LIMITS.attempts)throw new Error('继续次数已达上限，请整理需求后创建新任务。');const task={id:randomUUID(),prompt,state:'running',phase:'理解需求',attempts:(previous?.attempts||0)+1,resumedFrom:previous?.id,baseRevision:p.revision,sourceDigest:await sourceDigest(store,p),startedAt:Date.now(),updatedAt:Date.now(),events:[],limits:LIMITS};p.tasks.push(task);p.tasks=p.tasks.slice(-50);await store.save(p);return task;}
+export async function recoverTasks(store){for(const item of await store.list()){const p=await store.get(item.id);let changed=false;for(const t of p.tasks){if(t.state==='running'){t.state='interrupted';t.phase='服务重启，任务中断；可核对源码后继续';t.updatedAt=Date.now();changed=true;}}if(changed)await store.save(p);}}

@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { normalizeProject } from './harness.mjs';
 
 export const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const EDITABLE = /^src\/(?:pages\/index\/index\.(?:jsx|css)|components\/[a-zA-Z0-9_/-]+\.(?:jsx|css)|app\.css)$/;
@@ -27,7 +28,7 @@ export function validateSource(name, content) {
 export async function atomicJson(file, value) {
   const temp = file+'.tmp-'+randomUUID();
   await fs.writeFile(temp, JSON.stringify(value,null,2));
-  await fs.rename(temp,file);
+  try{for(let attempt=0;;attempt++){try{await fs.rename(temp,file);break;}catch(e){if(!['EPERM','EACCES','EBUSY'].includes(e.code)||attempt>=5)throw e;await new Promise(r=>setTimeout(r,30*(attempt+1)));}}}finally{await fs.rm(temp,{force:true}).catch(()=>{});}
 }
 export async function readSources(dir) {
   const result = {};
@@ -45,7 +46,7 @@ export async function writeSource(dir,name,content) {
   await fs.mkdir(path.dirname(target),{recursive:true}); await fs.writeFile(target,content);
 }
 export class Store {
-  constructor(root=path.join(APP_ROOT,'.studio')) { this.root=root; }
+  constructor(root=path.join(APP_ROOT,'.studio')) { this.root=root; this.saves=new Map(); }
   async init() {
     await fs.mkdir(path.join(this.root,'projects'),{recursive:true});
     // All generated projects share the bundled, pinned compiler dependencies.
@@ -53,8 +54,8 @@ export class Store {
     try { await fs.access(modules); } catch { await fs.symlink(path.join(APP_ROOT,'node_modules'),modules,process.platform==='win32'?'junction':'dir'); }
   }
   dir(id) { if(!/^[a-f0-9-]{36}$/.test(id)) throw new Error('项目不存在。'); return path.join(this.root,'projects',id); }
-  async get(id) { return JSON.parse(await fs.readFile(path.join(this.dir(id),'project.json'),'utf8')); }
-  async save(project) { await atomicJson(path.join(this.dir(project.id),'project.json'),project); }
+  async get(id) { return normalizeProject(JSON.parse(await fs.readFile(path.join(this.dir(id),'project.json'),'utf8'))); }
+  async save(project) { normalizeProject(project); const previous=this.saves.get(project.id)||Promise.resolve();const pending=previous.catch(()=>{}).then(()=>atomicJson(path.join(this.dir(project.id),'project.json'),project));this.saves.set(project.id,pending);try{await pending;}finally{if(this.saves.get(project.id)===pending)this.saves.delete(project.id);} }
   async list() {
     const names=await fs.readdir(path.join(this.root,'projects'));
     const all=await Promise.all(names.filter(x=>/^[a-f0-9-]{36}$/.test(x)).map(id=>this.get(id).catch(()=>null)));
@@ -84,7 +85,7 @@ export class Store {
     await fs.cp(draft,target,{recursive:true});
     for(const [name,content] of Object.entries(files)) await writeSource(path.join(this.dir(project.id),'current'),name,content);
     project.revision=revision; project.ready=true; project.updatedAt=Date.now();
-    project.versions.push({id:randomUUID(),revision,label:label.slice(0,80),time:Date.now(),files});
+    project.versions.push({id:randomUUID(),revision,label:label.slice(0,80),time:Date.now(),files,memory:structuredClone(project.memory),verification:structuredClone(project.verification||{state:'pending'})});
     await this.save(project); return project;
   }
   previewDir(project) { return path.join(this.dir(project.id),'revisions',String(project.revision),'dist','h5'); }

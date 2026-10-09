@@ -7,6 +7,7 @@ import archiver from 'archiver';
 import { APP_ROOT,Store,atomicJson,readSources } from './store.mjs';
 import { buildProject } from './builder.mjs';
 import { runAgent } from './agent.mjs';
+import { remember,safeText,createTask,recoverTasks,sourceDigest,LIMITS } from './harness.mjs';
 import { storageBridge } from './preview-bridge.mjs';
 import { configureNetwork,modelFetch } from './network.mjs';
 
@@ -20,9 +21,9 @@ export function parseSettings(input,current={}) {
   const apiKey=String(input.apiKey||'').trim()||(sameEndpoint?current.apiKey:'')||'';
   return {provider,baseUrl,model,apiKey};
 }
-export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),production=false,seed=true,build=buildProject}={}) {
+export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),production=false,seed=true,build=buildProject,agent=runAgent}={}) {
   configureNetwork();
-  const store=new Store(root);await store.init();
+  const store=new Store(root);await store.init();await recoverTasks(store);
   let config={provider:'deepseek',baseUrl:'https://api.deepseek.com',model:'deepseek-flash',apiKey:''};
   try{config={...config,...JSON.parse(await fs.readFile(path.join(root,'settings.json'),'utf8')),apiKey:''};}catch{}
   const publicSettings=()=>({...config,apiKey:undefined,hasKey:!!config.apiKey});
@@ -39,7 +40,7 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
       const dir=path.join(store.dir(req.params.id),'revisions',req.params.revision,'dist','h5');
       if(req.path==='/'||req.path==='/index.html'){
         let storage={};try{storage=JSON.parse(await fs.readFile(path.join(store.dir(req.params.id),'storage.json'),'utf8'));}catch{}
-        let html=await fs.readFile(path.join(dir,'index.html'),'utf8');html=html.replace('<head>','<head>'+storageBridge(req.params.id,storage));res.setHeader('Cache-Control','no-store');return res.type('html').send(html);
+        let html=await fs.readFile(path.join(dir,'index.html'),'utf8');html=html.replace('<head>','<head>'+storageBridge(req.params.id,storage,Number(req.params.revision)));res.setHeader('Cache-Control','no-store');return res.type('html').send(html);
       }
       express.static(dir,{index:'index.html',fallthrough:false})(req,res,next);
     }catch{res.sendStatus(404);}
@@ -57,6 +58,8 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
     next();
   });
   app.use(express.json({limit:'1mb'}));
+  const operations=new Set();
+  const mutation=handler=>async(req,res,next)=>{const id=req.params.id;if(operations.has(id))return next(new Error('项目操作正在进行，请稍后再试。'));operations.add(id);try{await handler(req,res,next);}catch(e){next(e);}finally{operations.delete(id);}};
   function assertIdle(id){if(jobs.has(id))throw new Error('项目正在制作，请先等待完成或停止。');}
   async function initializeProject(title,sample=false){const p=await store.create(title,sample);const draft=await store.draft(p.id);await build(draft,{onLog:text=>console.log(text)});await store.commit(p,draft,sample?'初始示例 · 日常习惯':'创建项目');return store.public(p);}
   let initialError='';
@@ -94,28 +97,42 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
     if(!response.ok)throw new Error(`连接失败（${response.status}）。请检查 API 地址、模型名称、密钥和账户余额。`);
     const body=await response.json();if(!body.choices?.length)throw new Error('服务响应格式不兼容 Chat Completions。');res.json({ok:true});
   });
-  app.post('/api/projects/:id/run',async(req,res)=>{
+  app.put('/api/projects/:id/memory',mutation(async(req,res)=>{
+    assertIdle(req.params.id);const p=await store.get(req.params.id);const {goal,constraints,changes}=req.body;
+    if(typeof goal!=='string'||typeof constraints!=='string'||!Array.isArray(changes)||changes.some(x=>typeof x.text!=='string')||JSON.stringify(req.body).length>LIMITS.memoryChars)throw new Error('需求格式无效或超过容量。');
+    p.memory={goal:safeText(goal,config.apiKey),constraints:safeText(constraints,config.apiKey),changes:changes.map(x=>({text:safeText(x.text,config.apiKey),time:Number(x.time)||Date.now()})),updatedAt:Date.now()};await store.save(p);res.json(store.public(p));
+  }));
+  app.post('/api/projects/:id/runtime-error',mutation(async(req,res)=>{
+    assertIdle(req.params.id);const p=await store.get(req.params.id);if(req.body.revision!==p.revision)throw new Error('该错误来自旧预览，请刷新当前版本再检查。');
+    const e={revision:p.revision,message:safeText(req.body.message,config.apiKey).slice(0,2000),source:safeText(req.body.source,config.apiKey).slice(0,500),line:Number(req.body.line)||0,stack:safeText(req.body.stack,config.apiKey).slice(0,3000),time:Date.now()};
+    p.runtimeErrors=[...p.runtimeErrors,e].slice(-10);await store.save(p);res.json(store.public(p));
+  }));
+  app.post('/api/projects/:id/run',mutation(async(req,res)=>{
     const id=req.params.id;assertIdle(id);if(!config.apiKey)throw new Error('请先连接模型并填写 API Key。');
-    const prompt=String(req.body.prompt||'').trim();if(!prompt||prompt.length>12000)throw new Error('请输入 1–12000 字的需求。');
-    const project=await store.get(id),controller=new AbortController();jobs.set(id,controller);
-    const timeout=setTimeout(()=>controller.abort(new Error('制作超过 10 分钟，已停止。')),600000);
+    const project=await store.get(id);let previous;
+    if(req.body.resumeTaskId){previous=project.tasks.find(t=>t.id===req.body.resumeTaskId);if(!previous||!['interrupted','failed','stopped'].includes(previous.state))throw new Error('任务不能继续。');if(previous.sourceDigest!==await sourceDigest(store,project)||previous.baseRevision!==project.revision)throw new Error('源码或版本已变化，请核对当前预览后提交新的需求。');}
+    let prompt=previous?.prompt||String(req.body.prompt||'').trim();if(req.body.repair){const e=project.runtimeErrors.at(-1);if(!e||e.revision!==project.revision)throw new Error('没有当前版本的运行错误。');prompt='修复当前运行错误，并用实际功能检查验证：'+JSON.stringify(e);}
+    if(!prompt||prompt.length>12000)throw new Error('请输入 1–12000 字的需求。');prompt=safeText(prompt,config.apiKey);
+    if(!previous)remember(project,prompt,config.apiKey);
+    const controller=new AbortController();let finish;controller.finished=new Promise(r=>{finish=r;});jobs.set(id,controller);let task;
+    try{task=await createTask(store,project,prompt,previous);}catch(e){jobs.delete(id);throw e;}
+    const timeout=setTimeout(()=>controller.abort(new Error('timeout')),LIMITS.milliseconds);
     res.status(200).set({'Content-Type':'application/x-ndjson; charset=utf-8','Cache-Control':'no-store'});res.flushHeaders();
-    const redact=s=>config.apiKey?String(s).split(config.apiKey).join('[密钥已隐藏]'):String(s);
-    const emit=event=>{if(!res.destroyed)res.write(JSON.stringify(event.type==='done'?event:{...event,text:event.text?redact(event.text):undefined})+'\n');};
-    res.on('close',()=>{if(!res.writableEnded)controller.abort();});
+    const redact=s=>safeText(s,config.apiKey);let checkpoint=Promise.resolve();
+    const emit=event=>{if(event.type==='status'){task.phase=redact(event.text).slice(0,500);task.updatedAt=Date.now();task.events.push({text:task.phase,time:task.updatedAt});task.events=task.events.slice(-40);checkpoint=checkpoint.then(()=>store.save(project)).catch(e=>{controller.abort(new Error('checkpoint-failed'));throw e;});checkpoint.catch(()=>{});}if(!res.destroyed)res.write(JSON.stringify(event.type==='done'?event:{...event,text:event.text?redact(event.text):undefined})+'\n');};
     try{
       project.messages.push({role:'user',text:prompt,time:Date.now()});await store.save(project);
-      const done=await runAgent({store,project,config:{...config},prompt,signal:controller.signal,emit,build});
-      emit({type:'done',project:store.public(done)});
-    }catch(e){const message=controller.signal.aborted?'已停止制作，保留上一个可用版本。':redact(e.message);project.messages.push({role:'assistant',text:'本次制作未完成：'+message.slice(0,1800),time:Date.now()});await store.save(project);emit({type:'error',text:message,project:store.public(project)});}
-    finally{clearTimeout(timeout);jobs.delete(id);res.end();}
-  });
-  app.post('/api/projects/:id/stop',(req,res)=>{jobs.get(req.params.id)?.abort();res.json({ok:true});});
-  app.post('/api/projects/:id/restore',async(req,res)=>{
+      const done=await agent({store,project,config:{...config},prompt,signal:controller.signal,emit,build,task});
+      await checkpoint;task.state='completed';task.phase=done.verification?.state==='passed'?'功能检查通过':'制作结束，实际功能待验证';task.updatedAt=Date.now();await store.save(done);emit({type:'done',project:store.public(done)});
+    }catch(e){await checkpoint.catch(()=>{});const reason=controller.signal.reason?.message;task.state=controller.signal.aborted?(reason==='user-stop'?'stopped':'interrupted'):'failed';task.reason=reason||'error';task.phase=task.state==='stopped'?'用户主动停止；不会自动继续':task.state==='interrupted'?'制作中断，可核对源码后继续':'制作失败，可核对源码后继续';task.updatedAt=Date.now();const message=controller.signal.aborted?task.phase+'，保留上一个可用版本。':redact(e.message);project.messages.push({role:'assistant',text:'本次制作未完成：'+message.slice(0,1800),time:Date.now()});await store.save(project);emit({type:'error',text:message,project:store.public(project)});}
+    finally{clearTimeout(timeout);jobs.delete(id);finish();if(!res.destroyed)res.end();}
+  }));
+  app.post('/api/projects/:id/stop',(req,res)=>{jobs.get(req.params.id)?.abort(new Error('user-stop'));res.json({ok:true});});
+  app.post('/api/projects/:id/restore',mutation(async(req,res)=>{
     const id=req.params.id;assertIdle(id);const p=await store.get(id),v=p.versions.find(v=>v.id===req.body.versionId);if(!v)throw new Error('版本不存在。');
-    const controller=new AbortController();jobs.set(id,controller);
-    try{const draft=await store.draft(id,v.files);await build(draft,{signal:controller.signal});p.messages.push({role:'assistant',text:`已恢复到版本 ${v.revision} 的代码，并保存为新的版本。`,time:Date.now()});await store.commit(p,draft,`恢复版本 ${v.revision}`);res.json(store.public(p));}finally{jobs.delete(id);}
-  });
+    const controller=new AbortController();let finish;controller.finished=new Promise(r=>{finish=r;});jobs.set(id,controller);
+    let draft;try{draft=await store.draft(id,v.files);await build(draft,{signal:controller.signal});p.verification={state:'pending',reason:'版本恢复后需要重新验证功能'};p.memory.changes.push({text:`代码恢复到版本 ${v.revision}；保留当前最新需求`,time:Date.now()});p.messages.push({role:'assistant',text:`已恢复到版本 ${v.revision} 的代码，并保存为新的版本。`,time:Date.now()});await store.commit(p,draft,`恢复版本 ${v.revision}`);res.json(store.public(p));}finally{jobs.delete(id);finish();if(draft)await fs.rm(draft,{recursive:true,force:true}).catch(()=>{});}
+  }));
   app.get('/api/projects/:id/export',async(req,res)=>{
     const p=await store.get(req.params.id);if(!p.ready)throw new Error('项目尚未编译成功，暂时无法导出。');
     const dir=path.join(store.dir(p.id),'revisions',String(p.revision));
@@ -133,7 +150,7 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
   else{const {createServer}=await import('vite');vite=await createServer({root:APP_ROOT,server:{middlewareMode:true},appType:'custom'});app.use(vite.middlewares);}
   app.use((err,req,res,next)=>{if(res.headersSent)return next(err);const message=err.message||'操作失败。';res.status(400).json({error:message});});
   let server;try{server=await listen(app,port);}catch(e){previewServer.close();await vite?.close();throw e;}
-  return {url:`http://127.0.0.1:${server.address().port}`,previewOrigin,token,store,ready:initialization,close:async()=>{for(const job of jobs.values())job.abort();await vite?.close();server.closeAllConnections();previewServer.closeAllConnections();await Promise.all([new Promise(r=>server.close(r)),new Promise(r=>previewServer.close(r))]);}};
+  return {url:`http://127.0.0.1:${server.address().port}`,previewOrigin,token,store,ready:initialization,close:async()=>{const runningJobs=[...jobs.values()];for(const job of runningJobs)job.abort(new Error('service-close'));await Promise.all(runningJobs.map(job=>job.finished));await vite?.close();server.closeAllConnections();previewServer.closeAllConnections();await Promise.all([new Promise(r=>server.close(r)),new Promise(r=>previewServer.close(r))]);}};
 }
 function listen(app,port){return new Promise((resolve,reject)=>{const server=app.listen(port,'127.0.0.1',()=>resolve(server));server.on('error',reject);});}
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){const studio=await startStudio({port:Number(process.env.STUDIO_PORT||5173),production:process.argv.includes('--production')});console.log(`Sprout Studio: ${studio.url}`);const exit=async()=>{await studio.close();process.exit(0);};process.on('SIGINT',exit);process.on('SIGTERM',exit);}

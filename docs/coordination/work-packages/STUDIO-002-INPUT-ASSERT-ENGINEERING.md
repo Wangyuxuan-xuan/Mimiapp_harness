@@ -145,3 +145,21 @@ QA 脱敏 trace 核到最后工具调用 index74/result75：第14步 history cli
 已完成只读源码核对、官方文档与官方 GitHub 复用评审，并提出最小实施面、原负例和回归要求。仅本报告新增；没有实现、测试、模型调用或新包，因此不能记功能已完成或原 QA 已验收。
 
 下一负责人 B：结合独立 QA 的实际负例证据确定实施工作包；先交付通用值断言与相邻点击变化证据，明确已确认需求项的覆盖检查，另列全需求覆盖与跨场景证据组合。实施后由独立 QA 在精确冻结 SHA 验收，再决定产品集成，不抢占当前桌面验收。
+
+## 实施初改只读审查（2026-10-09，未冻结）
+
+B 已传 A 批准实施，建立独立工作树 `D:/app/.worktrees/studio-002-input-assert`，分支 `codex/studio-002-input-assert`，基线 `c4af44f`；唯一产品 writer 为 B 管理的 `/root/studio_repair`。本工程仍只读产品，仅写本报告；未运行活动树测试。以上“本轮仅方案”描述对应先前方案阶段，不能作为当前实施已停止的依据。
+
+初改读到 verify/agent/skill 及开发回归，所审 verify 内容摘要 `b0f284429b84b0dd73e3780ee98129a54a0f6c83ac59422bae0b65c9c7a2b18c`，不是冻结 SHA 或最终通过结论。afterStep/sourceStep 的一基索引和相邻约束正确；真实执行器生成 valueChecks 与 qr.source，宿主检查字段及完整 planDigest；sourceStep 分支不计短长基线；未强制生成后保留输入，开发回归包含自动清空；外层 abort 先传播并关闭浏览器。
+
+已集中报 B 一项修正：valueTarget 接收 deadline，但 direct/supported/visibility 的 Locator.evaluate 仍使用默认超时，DOM 移除或替换时可能各自重新等待4000ms。应统一使用剩余期限与 signal 检查，短暂 detached 重试仅限剩余期限，不能吞掉取消或 runtime。独立 QA 应核同长度不同期待值的旧计划摘要失配、source 字段缺失/错绑，以及完整基线与额外来源组合。当前等待 writer 修正后冻结版本再作增量审查，不据初改宣称已通过。
+
+后续增量：HEAD `6e12e14` 上活动修正已加入 valueOptions，direct/supported/visibility 的 Locator.evaluate 与 inputValue 共用剩余期限及 signal；仅 detached 在剩余期限重试，取消与页面关闭先传播，截止错误返回安全 business 信息。本地 core 1.63.0 类型 `types/types.d.ts:14274` 已核 Locator.evaluate 的第三参数支持 timeout/signal。开发新增 DOM 替换及递减期限用例，工程未运行。该修正静态未见剩余阻塞，最终仍待 writer 冻结 SHA 与独立 QA 实际结果。B 新报导航/预览状态问题另由其他工作包隔离处理，不在本报告推断已修复。
+
+## 精确冻结版本最终只读结论
+
+已实际核新树 HEAD 为 `cb578873ca83b7c3b19beceefec492da2195a4ff`，工作树干净。verify SHA256 为 `5580e43c5b692ae2b4e759395b10dd8e9a8a800853c683517df39c663dd658a5`。最后提交仅追加截止修正、开发回归与实施说明；复核增量包含子输入解析前的期限检查，typed 错误不进入 detached 重试。schema、skill、真实 value/QR 来源证据和原 fill-based 基线分支与先前审查一致，允许生成后合法自动清空，未见剩余工程阻塞。
+
+实际读取开发截止专项日志 `D:/app/.worktrees/studio-002-input-assert/test-results/input-value-deadline-followup.tap`：定向1项通过；这属于开发者执行证据，不是本工程重新测试或独立 QA 结论。工程仅进行只读代码/日志/版本及差异格式检查，未启动产品测试、浏览器、模型或桌面。
+
+继续负责人 B；独立 QA 已获准在该精确 SHA 核同长度异计划摘要、QR 来源篡改及完整基线组合等。工程审查通过不等于独立动态验收、集成、重包或用户交付完成；剩余结果按 B 的独立 QA 工作包收口。

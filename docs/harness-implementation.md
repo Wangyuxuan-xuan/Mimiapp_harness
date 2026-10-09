@@ -67,3 +67,30 @@ QA 应先核对最终提交、上述报告的 compiler/model/interaction 字段�
 
 此脚本复用 `test-results/harness-real-report.json` 指向的三类首版真实双端不可变产物。该报告/产物未上传，远端检出不可直接运行本专项。先检查本机已有有效报告和 root；缺失时需在隔离目录运行 `npm run test:harness-real` 生成所需基线，或由QA按同一源码准备明确标注的基线；不得指向用户 `.studio`。新报告为 `test-results/harness-business-report.json`，每类保存 root/projectId/revision/sourceDigest/步骤，QA可直接对其 revisions/2 独立执行 verifyPreview，不需重编译。后续修改微信端仍未验证；本轮没有真实模型密钥/费用、公开发布或新桌面打包。
 最终本轮证据：在 abdbe7b 上的修复工作区运行 `node --test tests/*.test.mjs`，29/29通过；`test-results/harness-business-report.json` passed=true，三类修改各真实H5/Edge通过。独立QA复验占位密钥流/持久化、接受停止与旧版本一致性、保存中409、restore边界、延迟count及辅助函数切分/截断前缀/属性名均通过，证据 `qa-special-recheck-report.json`、`qa-persist-recheck-report.json`、`qa-restore-report.json`、`qa-browser-report.json`。独立三类业务复验 `qa-business-report.json`：清单双项逐删/刷新0；记录3+2后最后2改9合计12/刷新12；计算三倍率/负数/非数字/零；均核对检查与版本/源码摘要匹配。上述报告均位于未上传的 test-results，由QA独立维护；对应最终产品提交由B/QA登记，不由工程修改QA记录。本轮未更改前端源文件，也未重复三类首版双端或全12阶段构建。
+## 当前电脑版独立产物（2026-10-09）
+
+专项只复用本机 Electron 38.8.6、electron-builder 26.15.3、既有 Taro/Playwright；先核对 Electron 本地声明与[官方 app 生命周期/路径文档](https://www.electronjs.org/docs/latest/api/app)。现有脚本参数化 fresh stage/output 与依赖修补目的地，不覆盖旧release，默认不发布，使用本机electronDist、跳过依赖重建/签名；不安装或下载工具。输出目录及独立stage已加入Git忽略。
+
+`STUDIO_USER_DATA_DIR` 和 `STUDIO_WORKSPACE_DIR` 可显式指定绝对隔离目录；入口在app ready前创建并setPath(userData)，拒绝相对路径。业务工作区直接使用覆盖值，服务仍随机端口。正常before-quit通过原生preventDefault等待既有close完成；未重造退出框架。QA使用新的预置测试项目，不连接旧STUDIO_URL，不读取旧AppData/.studio/密钥。
+
+首次命令：
+
+```powershell
+node scripts/package-desktop.mjs --stage .package-staging-harness-20261009 --output release-harness-20261009
+node scripts/harness-package-smoke.mjs release-harness-20261009/build-manifest.json
+```
+
+首包真实Electron UI、明确隔离路径、包内index/PI SDK/验证器与直接生产依赖导入通过。最初SDK导入探针30秒超时，调整为完成导入后显式结束探针，60秒限额，复验通过；这不是重复打包。初包源码摘要存build-manifest.json，包含server/electron逐文件SHA256、baseCommit、productBase、工具实际版本；打包期间管理提交会变化，以实际文件摘要对应产物，不只按main名称认定。
+
+独立QA基本功能检查通过后，隔离storage.json rename延迟500毫秒实证命中正常关闭丢末笔数据。修复：关闭先fence新mutation；storage请求在await store.get之前同步登记完成Promise，mutation也登记；等待作业、已接收请求与存储队列后再关HTTP并退出；读取返回后已关闭时不再创建新run/restore。单项 `node --test tests/desktop-close.test.mjs` 通过，覆盖源读取与重命名双门控、在途请求被等待、新请求503拒收及最终数据9保留。没有重复29项/三类编译。
+
+唯一一次针对重打：
+
+```powershell
+node scripts/package-desktop.mjs --stage .package-staging-harness-20261009-r2 --output release-harness-20261009-r2
+```
+
+新包测试/QA都应设置两项绝对隔离路径并删除STUDIO_URL/ELECTRON_RUN_AS_NODE；可复制此前有效H5测试产物至新workspace，明确这是已有真实H5产物夹具，不是本轮模型生成。smoke入口依赖本机harness-business-report.json/产物，远端fresh环境需先准备明确夹具；不指向用户历史数据。安装版、签名、微信实际运行和商业模型仍不是本轮证明范围。QA报告由独立QA维护，产物与本机报告不提交Git。
+最终修复包 `release-harness-20261009-r2/win-unpacked/Sprout Studio.exe` 于北京时间12:56生成，专项开始于12:42，限额内共两包。C r2烟雾报告 `test-results/harness-package-smoke-report.json` passed=true：包内生产依赖/PI/index/检查器导入、源码摘要匹配、真实新exe明确隔离启动及正常退出。QA r2原触发脚本复验 `test-results/qa-desktop-report.json` passed=true：需求修正/任务中断入口/旧版本实际预览/正常重开均通过；仅新夹具storage.json rename延迟500毫秒，确认未完成时合计9，正常quit后第三次打开仍9，关闭丢末笔数据已修复。QA进程均已结束，未做第三包或重复全量构建。
+
+最终包manifest `baseCommit=a09f1b9f326060b760b12744f6ef05113e9766a1` 是构建期间管理HEAD，产品基线242b6fc加本轮明确改动由文件SHA256绑定；server/index.mjs为6bc9adbb044149824eacd5879cf4e54b226752fd93040f2174e549ed5ede0b2e，electron/main.cjs为2531997d8923d9350ce29ed0308aa5440875787a16752d13b16ea5d125aa2df2。最终源码提交由B/QA绑定。可执行文件是同版本Electron启动器，单看exe摘要不足以证明业务源码版本，应同时核对resources/app与manifest。依赖修补脚本现在要求显式目的目录，拒绝默认覆盖旧包；该脚本不在app运行代码里，此收尾保护不改变已验收产物。

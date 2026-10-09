@@ -1,10 +1,14 @@
 const {app,BrowserWindow,session,dialog}=require('electron');
 const path=require('node:path');
+const fs=require('node:fs');
 const {pathToFileURL}=require('node:url');
 let studio;
 const root=path.resolve(__dirname,'..');
-// Portable development state stays next to the source. Packaged builds use app data.
-if(!app.isPackaged)app.setPath('userData',path.join(root,'.studio','desktop'));
+// Explicit isolated paths are resolved before Electron initializes any session data.
+const absoluteOverride=name=>{const value=process.env[name];if(!value)return null;if(!path.isAbsolute(value))throw new Error(name+' 必须是绝对路径。');return path.resolve(value);};
+const isolatedUserData=absoluteOverride('STUDIO_USER_DATA_DIR'),isolatedWorkspace=absoluteOverride('STUDIO_WORKSPACE_DIR');
+if(isolatedUserData){fs.mkdirSync(isolatedUserData,{recursive:true});app.setPath('userData',isolatedUserData);}
+else if(!app.isPackaged)app.setPath('userData',path.join(root,'.studio','desktop'));
 app.setName('Sprout Studio');
 app.disableHardwareAcceleration();
 app.whenReady().then(async()=>{
@@ -14,7 +18,7 @@ app.whenReady().then(async()=>{
       studio={url:target.origin,close:async()=>{}};
     }else{
       const {startStudio}=await import(pathToFileURL(path.join(root,'server/index.mjs')).href);
-      studio=await startStudio({port:0,root:app.isPackaged?path.join(app.getPath('userData'),'workspace'):path.join(root,'.studio'),production:true});
+      studio=await startStudio({port:0,root:isolatedWorkspace||(app.isPackaged||isolatedUserData?path.join(app.getPath('userData'),'workspace'):path.join(root,'.studio')),production:true});
     }
     session.defaultSession.setPermissionRequestHandler((_contents,_permission,callback)=>callback(false));
     const win=new BrowserWindow({width:1440,height:960,minWidth:960,minHeight:700,title:'小芽 · Sprout Studio',backgroundColor:'#f8faf8',autoHideMenuBar:true,webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true}});
@@ -24,4 +28,5 @@ app.whenReady().then(async()=>{
   }catch(error){console.error('Sprout startup failed:',error.message);dialog.showErrorBox('小芽启动失败',error.message);app.quit();}
 });
 app.on('window-all-closed',()=>app.quit());
-app.on('before-quit',()=>{studio?.close();});
+let closing=false,closed=false;
+app.on('before-quit',event=>{if(closed||!studio)return;event.preventDefault();if(closing)return;closing=true;Promise.resolve(studio.close()).then(()=>{closed=true;app.quit();}).catch(error=>{closing=false;console.error('Sprout shutdown failed:',error.message);dialog.showErrorBox('小芽退出未完成',error.message);});});

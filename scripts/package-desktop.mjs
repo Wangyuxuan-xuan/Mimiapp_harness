@@ -1,11 +1,16 @@
-import fs from 'node:fs/promises';import path from 'node:path';import {spawn} from 'node:child_process';
-async function run(file,args=[]){await new Promise((resolve,reject)=>{const p=spawn(process.execPath,[file,...args],{stdio:'inherit',windowsHide:true});p.on('error',reject);p.on('exit',c=>c===0?resolve():reject(new Error(`Packaging step failed: ${c}`)));});}
-await run('node_modules/vite/bin/vite.js',['build']);
-const stage=path.resolve('.package-staging');await fs.mkdir(stage,{recursive:true});
-for(const dir of ['dist','electron','server','templates','agent-skills'])await fs.cp(path.resolve(dir),path.join(stage,dir),{recursive:true});
-const pkg=JSON.parse(await fs.readFile('package.json','utf8'));delete pkg.build;await fs.writeFile(path.join(stage,'package.json'),JSON.stringify(pkg,null,2));
-try{await fs.symlink(path.resolve('node_modules'),path.join(stage,'node_modules'),'junction');}catch(e){if(e.code!=='EEXIST')throw e;}
-await run('node_modules/electron-builder/cli.js',['--win','dir','--config.directories.output=release-qr-fix','--config.directories.app=.package-staging']);
-// Include dependencies of nested package versions as well as top-level packages.
-await run('scripts/repair-package-deps.mjs');
-console.log('Packaged desktop: release-qr-fix/win-unpacked/Sprout Studio.exe');
+import fs from 'node:fs/promises';import path from 'node:path';import {spawn,execFileSync} from 'node:child_process';import {createHash} from 'node:crypto';
+const appRoot=path.resolve('.'),stamp=Date.now(),deadline=Date.now()+25*60*1000;
+function option(name,fallback){const i=process.argv.indexOf(name);return i<0?fallback:process.argv[i+1];}
+function newDirectory(value,prefix){const dir=path.resolve(value),relative=path.relative(appRoot,dir);if(relative.startsWith('..')||path.isAbsolute(relative)||!relative.startsWith(prefix))throw new Error('打包目录必须是项目内独立的 '+prefix+' 路径。');return dir;}
+const stage=newDirectory(option('--stage',`.package-staging-harness-${stamp}`),'.package-staging-'),output=newDirectory(option('--output',`release-harness-${stamp}`),'release-harness-');
+for(const dir of [stage,output]){try{await fs.access(dir);throw new Error('目录已存在，拒绝覆盖：'+dir);}catch(e){if(e.code!=='ENOENT')throw e;}}
+await fs.access(path.resolve('node_modules/electron/dist/electron.exe'));await fs.access(path.resolve('node_modules/electron-builder/cli.js'));
+async function run(file,args=[]){await new Promise((resolve,reject)=>{const p=spawn(process.execPath,[file,...args],{stdio:'inherit',windowsHide:true,env:{...process.env,ELECTRON_SKIP_BINARY_DOWNLOAD:'1',ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES:'false',CSC_IDENTITY_AUTO_DISCOVERY:'false'}});const timer=setTimeout(()=>{if(process.platform==='win32')spawn('taskkill',['/pid',String(p.pid),'/t','/f'],{windowsHide:true,stdio:'ignore'});else p.kill('SIGKILL');reject(new Error('本次打包达到25分钟上限，停止此子进程。'));},Math.max(1,deadline-Date.now()));p.on('error',e=>{clearTimeout(timer);reject(e);});p.on('exit',c=>{clearTimeout(timer);c===0?resolve():reject(new Error(`Packaging step failed: ${c}`));});});}
+await fs.mkdir(stage);await run('node_modules/vite/bin/vite.js',['build','--outDir',path.join(stage,'dist')]);
+for(const dir of ['electron','server','templates','agent-skills'])await fs.cp(path.resolve(dir),path.join(stage,dir),{recursive:true});
+const pkg=JSON.parse(await fs.readFile('package.json','utf8'));delete pkg.build;delete pkg.devDependencies;await fs.writeFile(path.join(stage,'package.json'),JSON.stringify(pkg,null,2));await fs.symlink(path.resolve('node_modules'),path.join(stage,'node_modules'),'junction');
+await run('node_modules/electron-builder/cli.js',['--win','dir','--publish','never',`--config.directories.output=${output}`,`--config.directories.app=${stage}`,`--config.electronDist=${path.resolve('node_modules/electron/dist')}`]);
+await run('scripts/repair-package-deps.mjs',[path.join(output,'win-unpacked/resources/app/node_modules')]);
+const files={};for(const dir of ['electron','server'])for(const name of await fs.readdir(path.join(stage,dir))){const file=path.join(stage,dir,name);if((await fs.stat(file)).isFile())files[dir+'/'+name]=createHash('sha256').update(await fs.readFile(file)).digest('hex');}
+const manifest={at:new Date().toISOString(),baseCommit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),productBase:'242b6fcd40638bb30723249b1489f4ef578c009e',stage,output,exe:path.join(output,'win-unpacked/Sprout Studio.exe'),files,electron:JSON.parse(await fs.readFile('node_modules/electron/package.json','utf8')).version,builder:JSON.parse(await fs.readFile('node_modules/electron-builder/package.json','utf8')).version,downloads:'local electronDist and existing dependencies only'};
+await fs.writeFile(path.join(output,'build-manifest.json'),JSON.stringify(manifest,null,2));console.log('Packaged desktop: '+manifest.exe);

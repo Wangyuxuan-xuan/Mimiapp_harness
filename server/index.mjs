@@ -162,8 +162,9 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
     p.runtimeErrors=[...p.runtimeErrors,e].slice(-10);await store.save(p);res.json(store.public(p));
   }));
   app.post('/api/projects/:id/verify',mutation(async(req,res)=>{
-    const id=req.params.id;assertIdle(id);const project=await store.get(id);
+    const id=req.params.id;assertIdle(id);let project=await store.get(id);
     if(!project.ready)throw new Error('项目尚未编译成功，暂时无法验证。');
+    await cancelPreparation(id);project=await store.get(id);
     const controller=new AbortController();let finish;controller.finished=new Promise(r=>{finish=r;});jobs.set(id,controller);
     const timer=setTimeout(()=>controller.abort(new Error('verification-timeout')),120000);
     try{
@@ -210,7 +211,8 @@ export async function startStudio({port=5173,root=path.join(APP_ROOT,'.studio'),
   app.post('/api/projects/:id/restore',mutation(async(req,res)=>{
     const id=req.params.id;assertIdle(id);const p=await store.get(id);if(closing)throw new Error('应用正在关闭。');const v=p.versions.find(v=>v.id===req.body.versionId);if(!v)throw new Error('版本不存在。');
     const controller=new AbortController();let finish;controller.finished=new Promise(r=>{finish=r;});jobs.set(id,controller);
-    let draft;try{draft=await store.draft(id,v.files);await build(draft,{signal:controller.signal});p.verification={state:'pending',reason:'版本恢复后需要重新验证功能'};p.memory.changes.push({text:`代码恢复到版本 ${v.revision}；保留当前最新需求`,time:Date.now()});p.messages.push({role:'assistant',text:`已恢复到版本 ${v.revision} 的代码，并保存为新的版本。`,time:Date.now()});await store.commit(p,draft,`恢复版本 ${v.revision}`,{signal:controller.signal,beforePublish:()=>{controller.signal.throwIfAborted();controller.publicationStarted=true;}});res.json(store.public(p));}finally{jobs.delete(id);finish();if(draft)await fs.rm(draft,{recursive:true,force:true}).catch(()=>{});}
+    let draft;try{draft=await store.draft(id,v.files);await build(draft,{signal:controller.signal});p.verification={state:'pending',reason:'版本恢复后需要重新验证功能'};p.memory.changes.push({text:`代码恢复到版本 ${v.revision}；保留当前最新需求`,time:Date.now()});p.messages.push({role:'assistant',text:`已恢复到版本 ${v.revision} 的代码，并保存为新的版本。`,time:Date.now()});await store.commit(p,draft,`恢复版本 ${v.revision}`,{signal:controller.signal,beforePublish:()=>{controller.signal.throwIfAborted();controller.publicationStarted=true;}});}finally{jobs.delete(id);finish();if(draft)await fs.rm(draft,{recursive:true,force:true}).catch(()=>{});}
+    res.json(store.public(p));
   }));
   app.get('/api/projects/:id/export',async(req,res)=>{
     const p=await store.get(req.params.id);if(!p.ready)throw new Error('项目尚未编译成功，暂时无法导出。');

@@ -22,10 +22,26 @@ test('unique Taro host fills, QR pixels decode Chinese across legal sizes and mi
   await fs.writeFile(path.join(root,'dist/h5/index.html'),html);
   const result=await verifyPreview(root,[{action:'fill',selector:'.field',value:'中文填写'},{action:'text',selector:'#echo',value:'中文填写'},{action:'qr',selector:'#qr',value:'一二三'},{action:'qr',selector:'#qr-long',value:'这是更长的二维码内容，用来验证尺寸变化。'}]);
   assert.equal(result.state,'passed',JSON.stringify(result));assert.deepEqual(result.qrChecks.map(q=>q.version),[1,5]);
+  assert.ok(result.qrChecks.every(q=>q.fullyVisible&&q.viewportImageDigest?.length===64&&q.imageDigest?.length===64&&q.box.width>0));
+  await fs.mkdir('test-results',{recursive:true});await fs.writeFile('test-results/studio-repair-qr-positive.json',JSON.stringify(result,null,2));
   for(const [steps,pattern] of [
    [[{action:'fill',selector:'.ambiguous',value:'x'},{action:'text',selector:'#echo',value:'x'}],/内部输入框数量：2/],
    [[{action:'qr',selector:'#qr',value:'不同文字'}],/二维码内容不符/],
    [[{action:'qr',selector:'#fake',value:'一二三'}],/无法解码/],
   ]){const failed=await verifyPreview(root,steps);assert.equal(failed.state,'failed');assert.match(failed.error,pattern);}
+ }finally{await fs.rm(root,{recursive:true,force:true});}
+});
+
+test('whole phone viewport decoding catches overlays and overflow; fill reports truncation explicitly',async()=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'sprout-qr-visible-'));await fs.mkdir(path.join(root,'dist/h5'),{recursive:true});
+ try{
+  const html=`<html><head></head><body><input maxlength="3"><div id="message">ready</div>${grid('一二三',1)}<div id="cover" style="position:fixed;inset:0;background:white;z-index:999"></div></body></html>`;
+  await fs.writeFile(path.join(root,'dist/h5/index.html'),html);
+  const obscured=await verifyPreview(root,[{action:'qr',selector:'#qr',value:'一二三'}]);assert.equal(obscured.state,'failed');assert.match(obscured.error,/无法解码/);
+  await fs.writeFile(path.join(root,'dist/h5/index.html'),html.replace('<div id="cover"','<div hidden id="cover"'));
+  const truncated=await verifyPreview(root,[{action:'fill',selector:'input',value:'超过三字的长文字'},{action:'text',selector:'#message',value:'ready'}]);assert.equal(truncated.state,'failed');assert.match(truncated.error,/截断或改变.*maxlength/);
+  await fs.writeFile(path.join(root,'dist/h5/index.html'),`<html><head></head><body><div style="width:500px">${grid('一二三',1).replace('width:174px','width:500px')}</div></body></html>`);
+  const overflow=await verifyPreview(root,[{action:'qr',selector:'#qr',value:'一二三'}]);assert.equal(overflow.state,'failed');assert.match(overflow.error,/未完整显示/);
+  await fs.mkdir('test-results',{recursive:true});await fs.writeFile('test-results/studio-repair-qr-negative.json',JSON.stringify({passed:true,obscured,truncated,overflow},null,2));
  }finally{await fs.rm(root,{recursive:true,force:true});}
 });

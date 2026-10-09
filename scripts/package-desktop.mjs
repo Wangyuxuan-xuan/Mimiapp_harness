@@ -11,6 +11,22 @@ for(const dir of ['electron','server','templates','agent-skills'])await fs.cp(pa
 const pkg=JSON.parse(await fs.readFile('package.json','utf8'));delete pkg.build;delete pkg.devDependencies;await fs.writeFile(path.join(stage,'package.json'),JSON.stringify(pkg,null,2));await fs.symlink(path.resolve('node_modules'),path.join(stage,'node_modules'),'junction');
 await run('node_modules/electron-builder/cli.js',['--win','dir','--publish','never',`--config.directories.output=${output}`,`--config.directories.app=${stage}`,`--config.electronDist=${path.resolve('node_modules/electron/dist')}`]);
 await run('scripts/repair-package-deps.mjs',[path.join(output,'win-unpacked/resources/app/node_modules')]);
-const files={};for(const dir of ['electron','server'])for(const name of await fs.readdir(path.join(stage,dir))){const file=path.join(stage,dir,name);if((await fs.stat(file)).isFile())files[dir+'/'+name]=createHash('sha256').update(await fs.readFile(file)).digest('hex');}
-const manifest={at:new Date().toISOString(),baseCommit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),productBase:'242b6fcd40638bb30723249b1489f4ef578c009e',stage,output,exe:path.join(output,'win-unpacked/Sprout Studio.exe'),files,electron:JSON.parse(await fs.readFile('node_modules/electron/package.json','utf8')).version,builder:JSON.parse(await fs.readFile('node_modules/electron-builder/package.json','utf8')).version,downloads:'local electronDist and existing dependencies only'};
+const packagedApp=path.join(output,'win-unpacked/resources/app'),files={};
+async function recordFixedResource(relative){
+ const staged=path.join(stage,relative),entry=await fs.lstat(staged);
+ if(entry.isSymbolicLink())throw new Error('固定打包资源不能是链接：'+relative);
+ if(entry.isDirectory()){
+  for(const name of (await fs.readdir(staged)).sort())await recordFixedResource(relative+'/'+name);
+ }else if(entry.isFile()){
+  const hash=buffer=>createHash('sha256').update(buffer).digest('hex');
+  const expected=hash(await fs.readFile(staged)),actual=hash(await fs.readFile(path.join(packagedApp,relative)));
+  if(expected!==actual)throw new Error('包内固定资源与本次stage不一致：'+relative);
+  files[relative]=actual;
+ }
+}
+// Deliberately enumerate only shipped project resources, never workspace data,
+// credentials or settings. package.json here is the staged production manifest.
+for(const relative of ['electron','server','templates','agent-skills','package.json'])await recordFixedResource(relative);
+const decoderVersions={};for(const name of ['jsqr','pngjs'])decoderVersions[name]=JSON.parse(await fs.readFile(path.join(packagedApp,'node_modules',name,'package.json'),'utf8')).version;
+const manifest={at:new Date().toISOString(),baseCommit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),productBase:'242b6fcd40638bb30723249b1489f4ef578c009e',stage,output,exe:path.join(output,'win-unpacked/Sprout Studio.exe'),files,decoderVersions,electron:JSON.parse(await fs.readFile('node_modules/electron/package.json','utf8')).version,builder:JSON.parse(await fs.readFile('node_modules/electron-builder/package.json','utf8')).version,downloads:'local electronDist and existing dependencies only'};
 await fs.writeFile(path.join(output,'build-manifest.json'),JSON.stringify(manifest,null,2));console.log('Packaged desktop: '+manifest.exe);

@@ -110,3 +110,22 @@ node scripts/package-desktop.mjs --stage .package-staging-harness-20261009-r2 --
 qa-desktop-newpackage-ui-report.json passed=true：真实r3新exe、新明确隔离userData/workspace，服务上述刚编译的H5产物，精确验证3×3=9、负数提示、非数字提示、0=0；复用先前真实记录fixture的storage.json rename500ms门控，确认保存未完成时正常app.quit，重开仍保留最终9。初次UI脚本期望漏“结果：”固定前缀，初次报告保留；纠正预期后只新建UIworkspace操作同一次编译产物，没有再编译或改包。关闭恢复sourceDigest门控已由QA独立执行证实HTTP400、agent未调用、任务未新增且close完成（qa-desktop-resume-close报告，对应c88db3e；r3资源内容包含该窄修）。其它需求修正、旧可用版本与普通重开界面行为复用r2有效证据，没有重复三类重构建。
 
 本轮先验package-deps2/2、Electron真实依赖冲突修复、源码Weapp三类3/3及独立摘要/结构/官方六输出核验3/3，与r3真实编译/交互证据合并记录，各自范围不同。未调用商业模型，真实模型生成/连续修改端到端仍待授权密钥验证；未宣称所有未举证的关闭竞态或包内三类双端编译覆盖。产品/脚本写入结束，提交691d41a、c88db3e、8076b85已完成且未push；本段最终技术说明交B统一提交，管理台账/工作包/QA报告由各自负责人维护，所有隔离输出与test-results不纳入Git。
+# 真实二维码失败后的受限检查修复（2026-10-09）
+
+本轮保护用户原项目及运行中的已配置桌面服务。用户的625/441失败及新QA项目Taro输入组件外壳失败是诊断线索，不把尚已清理的draft推断为错误二维码算法。
+
+`verify_preview`新增`qr`动作：以选择器定位完整二维码区域（包含白色边距），用Playwright实际PNG截图、pngjs解RGBA和jsQR严格对比内容。每区域不超过1024px、4M像素/8MB图片，最多5次短轮询；失败返回具体步骤、无法解码或错误内容。保留三次实际功能检查上限，不用固定矩阵数量代替编码正确性。`fill`对于Taro组件外壳仅解析内部唯一input/textarea/contenteditable，多输入或无输入明确报错，不跳到其它表单字段。
+
+检查预算使用PI原生`session.abort()`停止第四次请求（工具内部不等待idle，避免自等死锁）。任务区分实际检查`verifyAttempts`、调用`verifyCalls`和拒绝`verifyRejected`，预算失败原因`verification-budget-exhausted`，保留最后有效检查错误与上个可用版本。没有提高工具、编译、任务时长或模型重试上限。
+
+生成器复用本机qrcode-terminal0.12.0携带的Kazuhiko Arase纯JS MIT算法（10文件原样复制），固定模板`src/vendor/qr/index.js`仅加标准UTF-8字节适配、L/M/Q/H参数验证及1000字节限额。组件唯一允许相对导入此入口，模型可读但不能写vendor；不开放require、Node接口或任意库。`readSources`将固定vendor及许可证纳入源码快照/摘要/不可变版本，恢复已有新快照精确保留当时算法；旧快照没有vendor时兼容补当前模板，之后的版本开始固定记录，不假称旧快照已有算法。导出项目src自然包含许可及全部算法，无新增网络依赖。
+
+复用依据：[jsQR官方RGBA接口与版本返回](https://github.com/cozmo/jsQR)（1.4.0 Apache-2.0，旧版本但本机已装/无新依赖）、[pngjs官方PNG接口](https://github.com/pngjs/pngjs)（本机3.4.0 MIT，仅处理本机浏览器输出）、[Playwright填充元素约束](https://playwright.dev/docs/api/class-locator#locator-fill)、[Arase原始算法的已安装vendor](https://github.com/gtanner/qrcode-terminal/tree/master/vendor/QRCode)。解码库转明确生产依赖并同步锁文件；终端CLI不进入生成项目，许可证随模板。
+
+本轮定向测试：`tests/agent-budget.test.mjs`两项模拟PI预算检查、`tests/verify-qr.test.mjs`真实Edge短中文v1/长中文v5截图解码、错误内容/黑方块及多输入拒绝，`tests/qr-resource.test.mjs`资源快照/摘要/恢复/只读边界。以上不证明真实配置模型最终任务成功；独立QA及真实模型全流程另记工作包。
+
+实际Taro兼容fixture首轮双端与官方WXML/WXSS编译成功，但作者fixture混合CSS设计px与inline实际px导致145px容器裁切290px矩阵，独立QA确认；该失败保留，不修改解码期望。B批准仅一次额外H5修fixture全部inline同源尺寸（fixture误用maxLength，Taro实际属性应为maxlength），微信产物仍仅对应修正前源码的编译证据。验证默认视口改为真实产品默认375×720，可由内部测试传1280×720明确宽屏复验，报告含viewport；不以改变视口遮掩首次裁切。
+
+修正H5 fixture的150字符首次解码只得到默认140字符，类型声明Input.d.ts:49明确Taro属性为`maxlength`；fixture误写`maxLength`，保留真实失败报告。产品生成技能提示已纠正为`maxlength={1000}`。现复用同H5产物检验120字符（>=100，未截断）的两个视口，不能据此证明fixture支持1000字符；后续真实模型项目应按正确属性生成并独立核实输入等值。
+
+同产物120字符在375视口仍未通过解码，固定5px大矩阵可能超可见宽；不再追加fixture编译。该fixture明确只证明双端/官方编译和短中文解码，不能宣布手机长文UI通过。生成技能补按320px预算从矩阵维度计算整数2–5px模块及四模块静区，后续真实模型任务独立验证。

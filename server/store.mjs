@@ -6,6 +6,8 @@ import { normalizeProject } from './harness.mjs';
 
 export const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const EDITABLE = /^src\/(?:pages\/index\/index\.(?:jsx|css)|components\/[a-zA-Z0-9_/-]+\.(?:jsx|css)|app\.css)$/;
+const FIXED_QR = /^src\/vendor\/qr\/(?:index\.js|LICENSE|core\/(?:index|QR8bitByte|QRBitBuffer|QRErrorCorrectLevel|QRMaskPattern|QRMath|QRMode|QRPolynomial|QRRSBlock|QRUtil)\.js)$/;
+export function readableSourcePath(name){return typeof name==='string'&&FIXED_QR.test(name)?name:sourcePath(name);}
 export function sourcePath(name) {
   if (typeof name !== 'string' || name.includes('..') || !EDITABLE.test(name)) throw new Error('只允许修改小程序页面、组件和样式文件。');
   return name;
@@ -21,6 +23,7 @@ export function validateSource(name, content) {
       if (['react','@tarojs/components','@tarojs/taro'].includes(imp)) continue;
       if (!imp.startsWith('.') || imp.includes('!') || imp.includes('?') || imp.includes('\\')) throw new Error('仅支持 React、Taro 与项目内组件依赖。');
       const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(name),imp));
+      if(resolved==='src/vendor/qr/index.js')continue; // Fixed bundled cross-platform encoder, never model-editable.
       sourcePath(/\.(jsx|css)$/.test(resolved) ? resolved : resolved+'.jsx');
     }
   }
@@ -36,7 +39,7 @@ export async function readSources(dir) {
     for (const ent of await fs.readdir(base,{withFileTypes:true})) {
       const full=path.join(base,ent.name);
       if (ent.isDirectory()) await walk(full);
-      else { const name=path.relative(dir,full).split(path.sep).join('/'); if(EDITABLE.test(name)) result[name]=await fs.readFile(full,'utf8'); }
+      else { const name=path.relative(dir,full).split(path.sep).join('/'); if(EDITABLE.test(name)||FIXED_QR.test(name)) result[name]=await fs.readFile(full,'utf8'); }
     }
   }
   await walk(path.join(dir,'src')); return result;
@@ -74,7 +77,12 @@ export class Store {
     await fs.cp(path.join(APP_ROOT,'templates/mini'),dir,{recursive:true});
     const project=await this.get(id);
     const sources=files||await readSources(project.ready?path.join(this.dir(id),'revisions',String(project.revision)):path.join(this.dir(id),'current'));
-    for(const [name,content] of Object.entries(sources)) await writeSource(dir,name,content);
+    for(const [name,content] of Object.entries(sources)) {
+      if(FIXED_QR.test(name)){
+        if(typeof content!=='string'||content.length>120000)throw new Error('固定二维码资源格式无效。');
+        const file=path.join(dir,name);await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,content);
+      }else await writeSource(dir,name,content);
+    }
     return dir;
   }
   async commit(project,draft,label,{signal,beforePublish}={}) {

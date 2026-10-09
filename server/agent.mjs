@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { Type } from 'typebox';
-import { APP_ROOT,readSources,sourcePath,writeSource } from './store.mjs';
+import { APP_ROOT,readSources,readableSourcePath,writeSource } from './store.mjs';
 import { buildProject } from './builder.mjs';
 import { memoryContext,LIMITS,safeText,safeValue,textRedactor,digestSources } from './harness.mjs';
 import { verifyPreview } from './verify.mjs';
@@ -9,7 +9,7 @@ import { modelFetch } from './network.mjs';
 
 const result=text=>({content:[{type:'text',text}],details:{}});
 export async function runAgent({store,project,config,prompt,signal,emit,build=buildProject,verify=verifyPreview,task,onPublish,beforeCommit}) {
-  let draft,runtime,session,abort,unsubscribe;const textOutput=textRedactor(config.apiKey);const emitText=text=>{if(text)emit({type:'text',text});};
+  let draft,runtime,session,abort,unsubscribe,budgetExceeded;const textOutput=textRedactor(config.apiKey);const emitText=text=>{if(text)emit({type:'text',text});};
   try{
   const {createAgentSession,createExtensionRuntime,ModelRuntime,SessionManager,SettingsManager}=await import('@earendil-works/pi-coding-agent');
   draft=await store.draft(project.id);
@@ -27,9 +27,9 @@ export async function runAgent({store,project,config,prompt,signal,emit,build=bu
   };
   let writes=0,builtAt=-1,buildAttempts=0,toolCalls=0,verifiedAt=-1,verification=null,verifyAttempts=0;
   const tools=[
-    {name:'verify_preview',label:'检查实际功能',description:'真实浏览器运行已编译应用，执行点击、填写、文本包含或数量断言。selector 是 CSS 选择器。编辑后必须重新检查。编译不等于功能通过。',parameters:Type.Object({steps:Type.Array(Type.Object({action:Type.Union(['click','fill','text','count','reload'].map(x=>Type.Literal(x))),selector:Type.Optional(Type.String()),value:Type.Optional(Type.Union([Type.String(),Type.Number()]))}),{minItems:1,maxItems:20})}),async execute(_id,args){signal.throwIfAborted();if(builtAt!==writes)return {...result('请先编译当前源码。'),isError:true};if(++verifyAttempts>3)throw new Error('功能修复达到三轮上限。');verification=safeValue(await verify(draft,args.steps,{signal}),config.apiKey);emit({type:'status',text:verification.state==='passed'?'所列实际功能检查通过':'功能检查失败，等待修复：'+verification.error});verifiedAt=verification.state==='passed'?writes:-1;return {...result(JSON.stringify(verification)),isError:verification.state!=='passed'};}},
+    {name:'verify_preview',label:'检查实际功能',description:'真实浏览器运行已编译应用。action=click点击/fill填写/text文本包含/count精确数量/qr截图解码严格等于value/reload刷新；selector为CSS，fill支持Taro组件内唯一输入框。二维码必须用qr检查实际编码内容，不能固定格子数（合法版本尺寸会变化）；定位含白色边距的二维码容器，最长1024像素。失败返回具体步骤，修正选择器或代码后重试；合计最多三次实际检查。编辑后必须重新编译检查，编译不等于功能通过。',parameters:Type.Object({steps:Type.Array(Type.Object({action:Type.Union(['click','fill','text','count','qr','reload'].map(x=>Type.Literal(x))),selector:Type.Optional(Type.String()),value:Type.Optional(Type.Union([Type.String(),Type.Number()]))}),{minItems:1,maxItems:20})}),async execute(_id,args){signal.throwIfAborted();if(builtAt!==writes)return {...result('请先编译当前源码。'),isError:true};if(task)task.verifyCalls=(task.verifyCalls||0)+1;if(verifyAttempts>=3){if(task)task.verifyRejected=(task.verifyRejected||0)+1;budgetExceeded??=Object.assign(new Error('实际功能检查已达到三次上限，本次制作停止并保留上一个可用版本。'+(verification?.error?'最后检查结果：'+verification.error:'')),{code:'verification-budget-exhausted'});emit({type:'status',text:budgetExceeded.message});abort();throw budgetExceeded;}verifyAttempts++;if(task)task.verifyAttempts=verifyAttempts;verification=safeValue(await verify(draft,args.steps,{signal}),config.apiKey);emit({type:'status',text:verification.state==='passed'?'所列实际功能检查通过':'功能检查失败，等待修复：'+verification.error});verifiedAt=verification.state==='passed'?writes:-1;return {...result(JSON.stringify(verification)),isError:verification.state!=='passed'};}},
     {name:'list_files',label:'查看项目',description:'列出当前小程序的可编辑源码文件。',parameters:Type.Object({}),async execute(){signal.throwIfAborted();return result(Object.keys(await readSources(draft)).join('\n'));}},
-    {name:'read_file',label:'读取源码',description:'读取一个项目源码文件。',parameters:Type.Object({path:Type.String()}),async execute(_id,args){signal.throwIfAborted();return result(safeText(await fs.readFile(path.join(draft,sourcePath(args.path)),'utf8'),config.apiKey));}},
+    {name:'read_file',label:'读取源码',description:'读取一个项目源码文件。',parameters:Type.Object({path:Type.String()}),async execute(_id,args){signal.throwIfAborted();return result(safeText(await fs.readFile(path.join(draft,readableSourcePath(args.path)),'utf8'),config.apiKey));}},
     {name:'write_file',label:'制作页面',description:'写入完整的页面、组件或样式文件。只允许 src/pages/index/index.jsx、index.css、src/components/*.jsx/css 和 src/app.css。',parameters:Type.Object({path:Type.String(),content:Type.String()}),async execute(_id,args){signal.throwIfAborted();await writeSource(draft,args.path,safeText(args.content,config.apiKey));writes++;return result(`已写入 ${args.path}。请编译检查。`);}},
     {name:'build_preview',label:'检查并编译',description:'编译 H5 预览和微信小程序，返回实际编译错误。成功后才可以向用户报告完成。',parameters:Type.Object({}),async execute(){signal.throwIfAborted();if(++buildAttempts>3)throw new Error('本次编译修复达到上限，请停止并说明错误。');try{await build(draft,{signal,onLog:text=>emit({type:'status',text})});builtAt=writes;return result('H5 与微信小程序编译成功。可以提交本次修改。');}catch(e){if(signal.aborted)throw e;return {...result('编译失败，请修复后再试：\n'+e.message.slice(-14000)),isError:true};}}}
   ];
@@ -63,7 +63,8 @@ export async function runAgent({store,project,config,prompt,signal,emit,build=bu
     signal.throwIfAborted();
     const previous=project.messages.at(-1)?.role==='user'&&project.messages.at(-1)?.text===prompt?project.messages.slice(0,-1):project.messages;
     const history=previous.slice(-10).map(m=>`${m.role==='user'?'用户':'助手'}：${safeText(m.text,config.apiKey).slice(0,600)}`).join('\n');
-    await session.prompt(`项目名称：${project.title}\n近期对话（作为背景）：\n${history}\n\n本次需求：${prompt}\n\n如果用户要求制作或修改，请实际读取、修改项目文件并调用 build_preview 完成双端编译检查，并调用 verify_preview 用实际交互及业务断言检查用户要求。功能检查失败时修复后重试；最多三轮。编译不是功能通过，未完成实际检查必须明确待验证。如果用户在提问或讨论，直接回答，无需为了回复而修改文件。`);
+    try{await session.prompt(`项目名称：${project.title}\n近期对话（作为背景）：\n${history}\n\n本次需求：${prompt}\n\n如果用户要求制作或修改，请实际读取、修改项目文件并调用 build_preview 完成双端编译检查，并调用 verify_preview 用实际交互及业务断言检查用户要求。功能检查失败时修复后重试；最多三轮。编译不是功能通过，未完成实际检查必须明确待验证。如果用户在提问或讨论，直接回答，无需为了回复而修改文件。`);}catch(e){throw budgetExceeded||e;}
+    if(budgetExceeded)throw budgetExceeded;
     signal.throwIfAborted();
     const failedMessage=[...session.messages].reverse().find(m=>m.role==='assistant'&&m.stopReason==='error');
     if(failedMessage)throw new Error(failedMessage.errorMessage||'模型请求失败。');
